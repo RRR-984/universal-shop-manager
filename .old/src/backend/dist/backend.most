@@ -1,0 +1,463 @@
+// Version: 1.0.0
+type AdminNote__602743910 =
+  {
+    content : Text;
+    createdAt : Int;
+    var isDeleted : Bool;
+    noteId : Nat;
+    targetPrincipal : Text;
+    var updatedAt : ?Int
+  };
+type AgroProductsFields__937348597 =
+  {
+    batchNumber : ?Text;
+    brand : Text;
+    cropType : Text;
+    expiryDate : ?Text;
+    productType : Text;
+    weight : Float;
+    weightUnit : Text
+  };
+type AutoPartsFields__302318734 =
+  {
+    expiryDate : ?Text;
+    partName : Text;
+    partNo : Text;
+    vehicleBrand : Text;
+    vehicleModel : Text
+  };
+type BillId__994444545 = Nat;
+type BillItem__719530568 =
+  {
+    discount : Float;
+    lineTotal : Float;
+    name : Text;
+    productId : ProductId__160010635;
+    qty : Float;
+    rate : Float;
+    taxAmt : Float;
+    unit : Text
+  };
+type BillStatus__488604250 = {#Cancelled; #Draft; #Saved};
+type Bill__553422546 =
+  {
+    amountPaid : Float;
+    amountPending : Float;
+    billNumber : Nat;
+    createdAt : Timestamp__301639476;
+    customerName : Text;
+    customerPhone : Text;
+    extraCharges : [ExtraCharge__443552616];
+    grandTotal : Float;
+    id : BillId__994444545;
+    items : [BillItem__719530568];
+    lastReminderSent : ?Timestamp__301639476;
+    paymentType : PaymentType__668863806;
+    priceType : PriceType__791559107;
+    profit : Float;
+    shareToken : ?Text;
+    staffCreatedBy : ?Principal;
+    status : BillStatus__488604250;
+    subtotal : Float;
+    taxBreakdown : TaxBreakdown__935917889;
+    taxRate : Float;
+    taxSystem : TaxSystem__952149175;
+    totalDiscount : Float
+  };
+type BuildingMaterialFields__328495033 =
+  {
+    brand : Text;
+    color : Text;
+    expiryDate : ?Text;
+    grade : Text;
+    material_type : Text;
+    size_dimensions : Text;
+    weight : Text
+  };
+type ClothingFields__210557091 =
+  {
+    brand : Text;
+    color : Text;
+    expiryDate : ?Text;
+    itemName : Text;
+    size : Text
+  };
+type CreditTransactionId__278932534 = Nat;
+type CreditTransactionType__510092556 = {#Earned; #Used};
+type CreditTransaction__1026363595 =
+  {
+    amount : Float;
+    billId : ?BillId__994444545;
+    date : Timestamp__301639476;
+    id : CreditTransactionId__278932534;
+    note : Text;
+    returnBillId : ?ReturnBillId__311506537;
+    txType : CreditTransactionType__510092556
+  };
+type CustomerCredit__625537921 =
+  {
+    balance : Float;
+    customerId : Text;
+    shopId : Text;
+    transactions : [CreditTransaction__1026363595]
+  };
+type CustomerId__614245251 = Nat;
+type Customer__778013411 =
+  {
+    createdAt : Int;
+    id : CustomerId__614245251;
+    lastPurchaseDate : ?Int;
+    name : Text;
+    phone : Text;
+    shopId : Text;
+    totalBills : Nat;
+    totalSpent : Float
+  };
+type Data__791452850<K, V> =
+  {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type DateFormat__443006287 = {#DDMMYYYY; #MMDDYYYY};
+type ElectricalFields__85427857 =
+  {
+    ampereRating : Text;
+    batchNumber : Text;
+    brand : Text;
+    color : Text;
+    expiryDate : ?Text;
+    isiCertified : Bool;
+    itemCategory : Text;
+    lengthUnit : Text;
+    model : Text;
+    voltageRating : Text;
+    wattage : Text;
+    wireGauge : Text
+  };
+type ElectronicsFields__236704619 =
+  {
+    brand : Text;
+    expiryDate : ?Text;
+    model : Text;
+    serialNo : Text;
+    warrantyMonths : Nat
+  };
+type EngineFields__647915438 =
+  {
+    #AgroProducts : AgroProductsFields__937348597;
+    #AutoParts : AutoPartsFields__302318734;
+    #BuildingMaterial : BuildingMaterialFields__328495033;
+    #Clothing : ClothingFields__210557091;
+    #Electrical : ElectricalFields__85427857;
+    #Electronics : ElectronicsFields__236704619;
+    #Footwear : FootwearFields__901047729;
+    #FruitsVegetables : FruitsVegetablesFields__276280453;
+    #General : GeneralFields__945393275;
+    #Grocery : GroceryFields__889099055;
+    #Hardware : HardwareFields__1059729771;
+    #Jewelry : JewelryFields__527644622;
+    #Medical : MedicalFields__504033530;
+    #Mobile : MobileFields__1063854217;
+    #Restaurant : RestaurantFields__942607281;
+    #Salon : SalonFields__18738068;
+    #Stationery : StationeryFields__967019336
+  };
+type ExtraCharge__443552616 = {amount : Float; description : Text};
+type FootwearFields__901047729 =
+  {
+    brand : Text;
+    color : Text;
+    expiryDate : ?Text;
+    model : Text;
+    size : Text;
+    sizeSystem : SizeSystem__489449443
+  };
+type FruitsVegetablesFields__276280453 =
+  {
+    batchNumber : ?Text;
+    freshnessDate : ?Text;
+    originSource : Text;
+    productType : Text;
+    seasonalTag : Text;
+    unit : Text;
+    variety : Text
+  };
+type GeneralFields__945393275 = {expiryDate : ?Text};
+type GroceryFields__889099055 =
+  {decimalQtyEnabled : Bool; expiryDate : ?Text};
+type HardwareFields__1059729771 = {expiryDate : ?Text; sku : Text};
+type Internal__8484328<K, V> =
+  {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
+type JewelryFields__527644622 =
+  {
+    expiryDate : ?Text;
+    makingCharges : Float;
+    metal : Metal__922416128;
+    metalRate : Float;
+    purity : Text;
+    weightGrams : Float
+  };
+type Language__22065978 =
+  {
+    #Arabic;
+    #BahasaIndonesia;
+    #Bengali;
+    #English;
+    #French;
+    #Hindi;
+    #Portuguese;
+    #Spanish;
+    #Swahili;
+    #Urdu
+  };
+type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
+type List__415060402<T> = List__790383201<T>;
+type List__790383201<T> =
+  {
+    var blockIndex : Nat__490723111;
+    var blocks : [var [var ?T]];
+    var elementIndex : Nat__490723111
+  };
+type Map__158565046<K, V> = Map__297112838<K, V>;
+type Map__297112838<K, V> =
+  {var root : Node__46230540<K, V>; var size : Nat__490723111};
+type Map__605269027<K, V> = Map__158565046<K, V>;
+type MedicalFields__504033530 =
+  {
+    batchNo : Text;
+    company : Text;
+    composition : Text;
+    expiryDate : Text;
+    isControlled : Bool;
+    packType : PackType__1058895741
+  };
+type Metal__922416128 = {#Gold; #Other; #Platinum; #Silver};
+type MobileFields__1063854217 =
+  {
+    accessoryType : Text;
+    brand : Text;
+    color : Text;
+    compatibility : Text;
+    displaySize : Text;
+    expiryDate : ?Text;
+    imei : Text;
+    mobileCategory : Text;
+    model : Text;
+    processor : Text;
+    ram : Text;
+    serialNumber : Text;
+    storage : Text;
+    warrantyMonths : Nat
+  };
+type Nat__490723111 = Nat__920180692;
+type Nat__920180692 = Nat;
+type Node__46230540<K, V> =
+  {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type NumberFormat__189214880 = {#Indian; #International};
+type PackType__1058895741 = {#Bottle; #Other; #Strip; #Tablet};
+type PaymentType__668863806 = {#full; #partial};
+type PriceType__791559107 = {#Custom; #Retail; #Wholesale};
+type ProductId__160010635 = Nat;
+type Product__110260450 =
+  {
+    barcode : ?Text;
+    category : Text;
+    costPrice : Float;
+    createdAt : Timestamp__301639476;
+    engineFields : EngineFields__647915438;
+    id : ProductId__160010635;
+    isActive : Bool;
+    labourCost : ?Float;
+    var lastSaleTime : ?Timestamp__301639476;
+    minStock : Float;
+    name : Text;
+    retailPrice : Float;
+    shopId : Text;
+    shopType : ShopType__556337919;
+    var stock : Float;
+    transportCost : ?Float;
+    unit : Text;
+    updatedAt : Timestamp__301639476;
+    wholesalePrice : Float
+  };
+type RestaurantCategory__53765157 = {#NonVeg; #Veg; #Vegan};
+type RestaurantFields__942607281 =
+  {category : RestaurantCategory__53765157; expiryDate : ?Text};
+type ReturnBillId__311506537 = Nat;
+type ReturnBill__685023167 =
+  {
+    approvedAt : ?Timestamp__301639476;
+    createdAt : Timestamp__301639476;
+    customerName : Text;
+    customerPhone : Text;
+    id : ReturnBillId__311506537;
+    originalBillId : BillId__994444545;
+    rejectionReason : ?Text;
+    returnItems : [ReturnItem__368003420];
+    shopId : Text;
+    status : ReturnStatus__37296511;
+    totalRefundAmount : Float
+  };
+type ReturnItem__368003420 =
+  {
+    lineTotal : Float;
+    name : Text;
+    originalRate : Float;
+    productId : ProductId__160010635;
+    reason : ?Text;
+    returnQty : Float
+  };
+type ReturnStatus__37296511 = {#Approved; #Pending; #Rejected};
+type SalonFields__18738068 =
+  {duration : Nat; expiryDate : ?Text; staffName : Text};
+type ShopConfig__128074734 =
+  {
+    country : Text;
+    currency : Text;
+    dateFormat : DateFormat__443006287;
+    deadStockAlertDays : Nat;
+    defaultCharges : ?SmartDefaultCharges__537954530;
+    expiryAlertThresholdDays : Nat;
+    gstinNumber : ?Text;
+    isSetupComplete : Bool;
+    language : Language__22065978;
+    minStockAlertEnabled : Bool;
+    numberFormat : NumberFormat__189214880;
+    shopAddress : Text;
+    shopEmail : Text;
+    shopName : Text;
+    shopPhone : Text;
+    shopType : ShopType__556337919;
+    taxRate : Float;
+    taxSystem : TaxSystem__952149175;
+    vatNumber : ?Text
+  };
+type ShopRole__733006212 = {#owner; #staff};
+type ShopType__556337919 =
+  {
+    #AgroProducts;
+    #AutoParts;
+    #BuildingMaterial;
+    #Clothing;
+    #Electrical;
+    #Electronics;
+    #Footwear;
+    #FruitsVegetables;
+    #General;
+    #Grocery;
+    #Hardware;
+    #Jewelry;
+    #Medical;
+    #Mobile;
+    #Restaurant;
+    #Salon;
+    #Stationery
+  };
+type SizeSystem__489449443 = {#EU; #UK; #US};
+type SmartDefaultCharges__537954530 =
+  {
+    defaultLabourCharge : ?Text;
+    defaultOtherCharge : ?Text;
+    defaultTransportCharge : ?Text
+  };
+type StaffMember__584203798 =
+  {addedAt : Int; principal : Principal; role : ShopRole__733006212};
+type StationeryFields__967019336 =
+  {
+    bookClass : Text;
+    bookMedium : Text;
+    bookSubject : Text;
+    expiryDate : ?Text;
+    notebookPages : Nat;
+    notebookSize : Text;
+    penBrand : Text;
+    penColor : Text;
+    subType : StationerySubType__716273586
+  };
+type StationerySubType__716273586 = {#Book; #File; #Notebook; #Other; #Pen};
+type SupplierId__701716487 = Text;
+type SupplierPurchaseId__1042237268 = Text;
+type SupplierPurchase__125675658 =
+  {
+    id : SupplierPurchaseId__1042237268;
+    notes : ?Text;
+    productId : Nat;
+    purchaseDate : Int;
+    purchasePrice : Text;
+    quantity : Float;
+    shopId : Text;
+    supplierId : SupplierId__701716487;
+    transportCharge : Text
+  };
+type Supplier__936068473 =
+  {
+    address : ?Text;
+    businessType : Text;
+    city : ?Text;
+    defaultTransportCharge : ?Text;
+    email : ?Text;
+    id : SupplierId__701716487;
+    name : Text;
+    phone : Text;
+    shopId : Text
+  };
+type TaxBreakdown__935917889 = {cgst : Float; igst : Float; sgst : Float};
+type TaxSystem__952149175 = {#GST; #Generic; #SalesTax; #VAT};
+type Timestamp__301639476 = Int;
+type UserRecord__412821149 =
+  {
+    firstSeen : Int;
+    var isActive : Bool;
+    var isBlocked : Bool;
+    var lastSeen : Int;
+    var loginCount : Nat;
+    principal : Text;
+    shopName : Text;
+    shopType : Text
+  };
+actor {
+  stable adminState :
+    {
+      var adminPrincipal : ?Text;
+      globalShops : Map__605269027<Text, ShopConfig__128074734>;
+      var nextNoteId : Nat;
+      notes : List__415060402<AdminNote__602743910>;
+      shopDisabled : Map__605269027<Text, Bool>;
+      users : Map__605269027<Text, UserRecord__412821149>
+    };
+  stable billState :
+    {
+      bills : List__415060402<Bill__553422546>;
+      var nextBillNumber : Nat;
+      var nextId : Nat
+    };
+  stable productState :
+    {var nextId : Nat; products : List__415060402<Product__110260450>};
+  stable ratesState :
+    {
+      var available : Bool;
+      var gold24k : Float;
+      var lastUpdated : Int;
+      var silver : Float
+    };
+  stable returnState :
+    {
+      credits : Map__605269027<Text, CustomerCredit__625537921>;
+      returns :
+        Map__605269027<ReturnBillId__311506537, ReturnBill__685023167>;
+      state : {var nextReturnId : Nat; var nextTxId : Nat}
+    };
+  stable rolesState :
+    {
+      customers : Map__605269027<Text, List__415060402<Customer__778013411>>;
+      nextCustomerId : Map__605269027<Text, Nat>;
+      shopOwners : Map__605269027<Text, Principal>;
+      shopStaff :
+        Map__605269027<Text, List__415060402<StaffMember__584203798>>
+    };
+  stable settingsState : {var config : ?ShopConfig__128074734};
+  stable supplierState :
+    {
+      var nextPurchId : Nat;
+      var nextSuppId : Nat;
+      supplierPurchases : List__415060402<SupplierPurchase__125675658>;
+      suppliers : List__415060402<Supplier__936068473>
+    }
+};

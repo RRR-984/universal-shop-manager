@@ -1,0 +1,29 @@
+{
+  "overview": "Universal Shop Manager is a globally scalable POS and inventory solution for all shop types and countries. It features 16+ shop types, full billing with partial payments, customer profiles, smart alerts, return & refund system with store credit, barcode scanning, supplier management, and a Super Admin panel.",
+  "features": [
+    "Return & Refund system with partial item returns and shop owner approval workflow",
+    "Store credit — customers earn on approved returns, use in future bills",
+    "Return history per bill and per customer profile",
+    "16+ shop types — Mobile, Electronics, Clothing, Jewelry, Medical, Grocery, and more",
+    "Full billing with part/full payment tracking and WhatsApp sharing",
+    "Smart Alerts — expiry, low stock, dead stock, pending payments",
+    "Supplier management with price comparison modal",
+    "Barcode scanning for product entry and billing",
+    "Super Admin panel — manage all shops and users",
+    "5-shop limit per Internet Identity account"
+  ],
+  "category": "productivity",
+  "tags": [
+    "shop-management",
+    "pos",
+    "billing",
+    "inventory",
+    "return-refund",
+    "store-credit",
+    "multi-shop",
+    "india",
+    "gst",
+    "retail"
+  ],
+  "last_updated": "2026-05-10T15:37:12.899Z"
+}

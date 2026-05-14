@@ -1,0 +1,6 @@
+const BUILDING_MATERIAL_SHOP_TYPE = "BuildingMaterial";
+const FRUITS_VEGETABLES_SHOP_TYPE = "FruitsVegetables";
+export {
+  BUILDING_MATERIAL_SHOP_TYPE as B,
+  FRUITS_VEGETABLES_SHOP_TYPE as F
+};

@@ -1,0 +1,812 @@
+type http_request_result = 
+ record {
+   body: blob;
+   headers: vec http_header;
+   status: nat;
+ };
+type http_header = 
+ record {
+   name: text;
+   value: text;
+ };
+type UserView = 
+ record {
+   firstSeen: int;
+   isActive: bool;
+   isBlocked: bool;
+   lastSeen: int;
+   loginCount: nat;
+   "principal": text;
+   shopName: text;
+   shopType: text;
+ };
+type UpdateProductInput = 
+ record {
+   barcode: opt text;
+   category: text;
+   costPrice: float64;
+   engineFields: EngineFields;
+   id: ProductId;
+   isActive: bool;
+   labourCost: opt float64;
+   minStock: float64;
+   name: text;
+   retailPrice: float64;
+   stock: float64;
+   transportCost: opt float64;
+   unit: text;
+   wholesalePrice: float64;
+ };
+type TransformationOutput = 
+ record {
+   body: blob;
+   headers: vec http_header;
+   status: nat;
+ };
+type TransformationInput = 
+ record {
+   context: blob;
+   response: http_request_result;
+ };
+type TopProduct = 
+ record {
+   name: text;
+   productId: ProductId;
+   profit: float64;
+   revenue: float64;
+   totalQty: float64;
+ };
+type Timestamp = int;
+type TaxSystem = 
+ variant {
+   GST;
+   Generic;
+   SalesTax;
+   VAT;
+ };
+type TaxBreakdown = 
+ record {
+   cgst: float64;
+   igst: float64;
+   sgst: float64;
+ };
+type SupplierPurchaseWithName = 
+ record {
+   purchase: SupplierPurchase;
+   supplierName: text;
+ };
+type SupplierPurchaseId = text;
+type SupplierPurchase = 
+ record {
+   id: SupplierPurchaseId;
+   notes: opt text;
+   productId: nat;
+   purchaseDate: int;
+   purchasePrice: text;
+   quantity: float64;
+   shopId: text;
+   supplierId: SupplierId;
+   transportCharge: text;
+ };
+type SupplierId = text;
+type Supplier = 
+ record {
+   address: opt text;
+   businessType: text;
+   city: opt text;
+   defaultTransportCharge: opt text;
+   email: opt text;
+   id: SupplierId;
+   name: text;
+   phone: text;
+   shopId: text;
+ };
+type StationerySubType = 
+ variant {
+   Book;
+   File;
+   Notebook;
+   Other;
+   Pen;
+ };
+type StationeryFields = 
+ record {
+   bookClass: text;
+   bookMedium: text;
+   bookSubject: text;
+   expiryDate: opt text;
+   notebookPages: nat;
+   notebookSize: text;
+   penBrand: text;
+   penColor: text;
+   subType: StationerySubType;
+ };
+type StaffMember = 
+ record {
+   addedAt: int;
+   "principal": principal;
+   role: ShopRole;
+ };
+type SmartDefaultCharges = 
+ record {
+   defaultLabourCharge: opt text;
+   defaultOtherCharge: opt text;
+   defaultTransportCharge: opt text;
+ };
+type SizeSystem = 
+ variant {
+   EU;
+   UK;
+   US;
+ };
+type ShopType = 
+ variant {
+   AgroProducts;
+   AutoParts;
+   BuildingMaterial;
+   Clothing;
+   Electrical;
+   Electronics;
+   Footwear;
+   FruitsVegetables;
+   General;
+   Grocery;
+   Hardware;
+   Jewelry;
+   Medical;
+   Mobile;
+   Restaurant;
+   Salon;
+   Stationery;
+ };
+type ShopRole = 
+ variant {
+   owner;
+   staff;
+ };
+type ShopConfig = 
+ record {
+   country: text;
+   currency: text;
+   dateFormat: DateFormat;
+   deadStockAlertDays: nat;
+   defaultCharges: opt SmartDefaultCharges;
+   expiryAlertThresholdDays: nat;
+   gstinNumber: opt text;
+   isSetupComplete: bool;
+   language: Language;
+   minStockAlertEnabled: bool;
+   numberFormat: NumberFormat;
+   shopAddress: text;
+   shopEmail: text;
+   shopName: text;
+   shopPhone: text;
+   shopType: ShopType;
+   taxRate: float64;
+   taxSystem: TaxSystem;
+   vatNumber: opt text;
+ };
+type ShopAdminView = 
+ record {
+   currency: text;
+   isDisabled: bool;
+   language: text;
+   "principal": text;
+   shopName: text;
+   shopType: text;
+   taxSystem: text;
+ };
+type SalonFields = 
+ record {
+   duration: nat;
+   expiryDate: opt text;
+   staffName: text;
+ };
+type SalesSummary = 
+ record {
+   billCount: nat;
+   totalProfit: float64;
+   totalSales: float64;
+ };
+type ReturnStatus = 
+ variant {
+   Approved;
+   Pending;
+   Rejected;
+ };
+type ReturnItem = 
+ record {
+   lineTotal: float64;
+   name: text;
+   originalRate: float64;
+   productId: ProductId;
+   reason: opt text;
+   returnQty: float64;
+ };
+type ReturnFilter = 
+ record {
+   fromDate: opt Timestamp;
+   status: opt ReturnStatus;
+   toDate: opt Timestamp;
+ };
+type ReturnBillId = nat;
+type ReturnBill = 
+ record {
+   approvedAt: opt Timestamp;
+   createdAt: Timestamp;
+   customerName: text;
+   customerPhone: text;
+   id: ReturnBillId;
+   originalBillId: BillId;
+   rejectionReason: opt text;
+   returnItems: vec ReturnItem;
+   shopId: text;
+   status: ReturnStatus;
+   totalRefundAmount: float64;
+ };
+type Result = 
+ variant {
+   err: text;
+   ok;
+ };
+type RestaurantFields = 
+ record {
+   category: RestaurantCategory;
+   expiryDate: opt text;
+ };
+type RestaurantCategory = 
+ variant {
+   NonVeg;
+   Veg;
+   Vegan;
+ };
+type RejectReturnInput = 
+ record {
+   reason: text;
+   returnBillId: ReturnBillId;
+ };
+type PublicBillView = 
+ record {
+   billNumber: nat;
+   createdAt: Timestamp;
+   customerName: text;
+   customerPhone: text;
+   extraCharges: vec ExtraCharge;
+   grandTotal: float64;
+   id: BillId;
+   items: vec BillItem;
+   priceType: PriceType;
+   status: BillStatus;
+   subtotal: float64;
+   taxBreakdown: TaxBreakdown;
+   taxRate: float64;
+   taxSystem: TaxSystem;
+   totalDiscount: float64;
+ };
+type ProductView = 
+ record {
+   barcode: opt text;
+   category: text;
+   costPrice: float64;
+   createdAt: Timestamp;
+   engineFields: EngineFields;
+   id: ProductId;
+   isActive: bool;
+   labourCost: opt float64;
+   lastSaleTime: opt Timestamp;
+   minStock: float64;
+   name: text;
+   retailPrice: float64;
+   shopId: text;
+   shopType: ShopType;
+   stock: float64;
+   transportCost: opt float64;
+   unit: text;
+   updatedAt: Timestamp;
+   wholesalePrice: float64;
+ };
+type ProductId = nat;
+type ProductFilter = 
+ record {
+   category: opt text;
+   isActive: opt bool;
+   searchName: opt text;
+   shopId: opt text;
+   shopType: opt ShopType;
+ };
+type PriceType = 
+ variant {
+   Custom;
+   Retail;
+   Wholesale;
+ };
+type PaymentType = 
+ variant {
+   full;
+   partial;
+ };
+type PackType = 
+ variant {
+   Bottle;
+   Other;
+   Strip;
+   Tablet;
+ };
+type NumberFormat = 
+ variant {
+   Indian;
+   International;
+ };
+type NearExpiryProduct = 
+ record {
+   daysLeft: int;
+   expiryDate: text;
+   name: text;
+   productId: ProductId;
+ };
+type MobileFields = 
+ record {
+   accessoryType: text;
+   brand: text;
+   color: text;
+   compatibility: text;
+   displaySize: text;
+   expiryDate: opt text;
+   imei: text;
+   mobileCategory: text;
+   model: text;
+   processor: text;
+   ram: text;
+   serialNumber: text;
+   storage: text;
+   warrantyMonths: nat;
+ };
+type MetalRates = 
+ record {
+   available: bool;
+   gold22k: float64;
+   gold24k: float64;
+   isStale: bool;
+   lastUpdated: int;
+   silver: float64;
+ };
+type Metal = 
+ variant {
+   Gold;
+   Other;
+   Platinum;
+   Silver;
+ };
+type MedicalFields = 
+ record {
+   batchNo: text;
+   company: text;
+   composition: text;
+   expiryDate: text;
+   isControlled: bool;
+   packType: PackType;
+ };
+type LowStockProduct = 
+ record {
+   minStock: float64;
+   name: text;
+   productId: ProductId;
+   stock: float64;
+ };
+type Language = 
+ variant {
+   Arabic;
+   BahasaIndonesia;
+   Bengali;
+   English;
+   French;
+   Hindi;
+   Portuguese;
+   Spanish;
+   Swahili;
+   Urdu;
+ };
+type JewelryFields = 
+ record {
+   expiryDate: opt text;
+   makingCharges: float64;
+   metal: Metal;
+   metalRate: float64;
+   purity: text;
+   weightGrams: float64;
+ };
+type HardwareFields = 
+ record {
+   expiryDate: opt text;
+   sku: text;
+ };
+type GroceryFields = 
+ record {
+   decimalQtyEnabled: bool;
+   expiryDate: opt text;
+ };
+type GeneralFields = record {expiryDate: opt text;};
+type FruitsVegetablesFields = 
+ record {
+   batchNumber: opt text;
+   freshnessDate: opt text;
+   originSource: text;
+   productType: text;
+   seasonalTag: text;
+   unit: text;
+   variety: text;
+ };
+type FootwearFields = 
+ record {
+   brand: text;
+   color: text;
+   expiryDate: opt text;
+   model: text;
+   size: text;
+   sizeSystem: SizeSystem;
+ };
+type ExtraCharge = 
+ record {
+   amount: float64;
+   description: text;
+ };
+type EngineFields = 
+ variant {
+   AgroProducts: AgroProductsFields;
+   AutoParts: AutoPartsFields;
+   BuildingMaterial: BuildingMaterialFields;
+   Clothing: ClothingFields;
+   Electrical: ElectricalFields;
+   Electronics: ElectronicsFields;
+   Footwear: FootwearFields;
+   FruitsVegetables: FruitsVegetablesFields;
+   General: GeneralFields;
+   Grocery: GroceryFields;
+   Hardware: HardwareFields;
+   Jewelry: JewelryFields;
+   Medical: MedicalFields;
+   Mobile: MobileFields;
+   Restaurant: RestaurantFields;
+   Salon: SalonFields;
+   Stationery: StationeryFields;
+ };
+type ElectronicsFields = 
+ record {
+   brand: text;
+   expiryDate: opt text;
+   model: text;
+   serialNo: text;
+   warrantyMonths: nat;
+ };
+type ElectricalFields = 
+ record {
+   ampereRating: text;
+   batchNumber: text;
+   brand: text;
+   color: text;
+   expiryDate: opt text;
+   isiCertified: bool;
+   itemCategory: text;
+   lengthUnit: text;
+   model: text;
+   voltageRating: text;
+   wattage: text;
+   wireGauge: text;
+ };
+type DeadStockProduct = 
+ record {
+   daysInactive: nat;
+   lastSaleTime: opt Timestamp;
+   name: text;
+   productId: ProductId;
+ };
+type DateFormat = 
+ variant {
+   DDMMYYYY;
+   MMDDYYYY;
+ };
+type CustomerView = 
+ record {
+   createdAt: int;
+   id: CustomerId;
+   lastPurchaseDate: opt int;
+   name: text;
+   phone: text;
+   shopId: text;
+   totalBills: nat;
+   totalSpent: float64;
+ };
+type CustomerId = nat;
+type CustomerCredit = 
+ record {
+   balance: float64;
+   customerId: text;
+   shopId: text;
+   transactions: vec CreditTransaction;
+ };
+type CreditTransactionType = 
+ variant {
+   Earned;
+   Used;
+ };
+type CreditTransactionId = nat;
+type CreditTransaction = 
+ record {
+   amount: float64;
+   billId: opt BillId;
+   date: Timestamp;
+   id: CreditTransactionId;
+   note: text;
+   returnBillId: opt ReturnBillId;
+   txType: CreditTransactionType;
+ };
+type CreateReturnInput = 
+ record {
+   customerName: text;
+   customerPhone: text;
+   originalBillId: BillId;
+   returnItems: vec ReturnItem;
+ };
+type CreateProductInput = 
+ record {
+   barcode: opt text;
+   category: text;
+   costPrice: float64;
+   engineFields: EngineFields;
+   isActive: bool;
+   labourCost: opt float64;
+   minStock: float64;
+   name: text;
+   retailPrice: float64;
+   shopId: text;
+   shopType: ShopType;
+   stock: float64;
+   transportCost: opt float64;
+   unit: text;
+   wholesalePrice: float64;
+ };
+type CreateBillInput = 
+ record {
+   amountPaid: float64;
+   billDiscount: float64;
+   customerName: text;
+   customerPhone: text;
+   extraCharges: vec ExtraCharge;
+   items: vec BillItem;
+   paymentType: PaymentType;
+   priceType: PriceType;
+   staffCreatedBy: opt principal;
+ };
+type ClothingFields = 
+ record {
+   brand: text;
+   color: text;
+   expiryDate: opt text;
+   itemName: text;
+   size: text;
+ };
+type BuildingMaterialFields = 
+ record {
+   brand: text;
+   color: text;
+   expiryDate: opt text;
+   grade: text;
+   material_type: text;
+   size_dimensions: text;
+   weight: text;
+ };
+type BillStatus = 
+ variant {
+   Cancelled;
+   Draft;
+   Saved;
+ };
+type BillItem = 
+ record {
+   discount: float64;
+   lineTotal: float64;
+   name: text;
+   productId: ProductId;
+   qty: float64;
+   rate: float64;
+   taxAmt: float64;
+   unit: text;
+ };
+type BillId = nat;
+type BillFilter = 
+ record {
+   fromDate: opt Timestamp;
+   searchCustomer: opt text;
+   status: opt BillStatus;
+   toDate: opt Timestamp;
+ };
+type Bill = 
+ record {
+   amountPaid: float64;
+   amountPending: float64;
+   billNumber: nat;
+   createdAt: Timestamp;
+   customerName: text;
+   customerPhone: text;
+   extraCharges: vec ExtraCharge;
+   grandTotal: float64;
+   id: BillId;
+   items: vec BillItem;
+   lastReminderSent: opt Timestamp;
+   paymentType: PaymentType;
+   priceType: PriceType;
+   profit: float64;
+   shareToken: opt text;
+   staffCreatedBy: opt principal;
+   status: BillStatus;
+   subtotal: float64;
+   taxBreakdown: TaxBreakdown;
+   taxRate: float64;
+   taxSystem: TaxSystem;
+   totalDiscount: float64;
+ };
+type AutoPartsFields = 
+ record {
+   expiryDate: opt text;
+   partName: text;
+   partNo: text;
+   vehicleBrand: text;
+   vehicleModel: text;
+ };
+type ApplyStoreCreditInput = 
+ record {
+   amount: float64;
+   billId: BillId;
+   customerPhone: text;
+ };
+type AnalyticsPeriod = 
+ variant {
+   Month;
+   Today;
+   Week;
+ };
+type AgroProductsFields = 
+ record {
+   batchNumber: opt text;
+   brand: text;
+   cropType: text;
+   expiryDate: opt text;
+   productType: text;
+   weight: float64;
+   weightUnit: text;
+ };
+type AdminNoteView = 
+ record {
+   content: text;
+   createdAt: int;
+   isDeleted: bool;
+   noteId: nat;
+   targetPrincipal: text;
+   updatedAt: opt int;
+ };
+service : {
+  addAdminNote: (targetPrincipal: text, content: text) ->
+   (variant {
+      err: text;
+      ok: nat;
+    });
+  addStaff: (shopId: text, staffPrincipal: principal) -> (Result);
+  adminBlockUser: (userPrincipal: text, blocked: bool) ->
+   (variant {
+      err: text;
+      ok;
+    });
+  adminDeleteShop: (shopId: text) -> (variant {
+                                        err: text;
+                                        ok;
+                                      });
+  adminDeleteUser: (userPrincipal: text) -> (variant {
+                                               err: text;
+                                               ok;
+                                             });
+  applyStoreCredit: (shopId: text, input: ApplyStoreCreditInput) ->
+   (CustomerCredit);
+  approveReturn: (shopId: text, returnBillId: ReturnBillId) -> (ReturnBill);
+  cancelBill: (id: BillId) -> (bool);
+  createBill: (input: CreateBillInput) -> (Bill);
+  createOrUpdateCustomer: (shopId: text, name: text, phone: text) ->
+   (CustomerId);
+  createProduct: (input: CreateProductInput) -> (ProductView);
+  createReturn: (shopId: text, input: CreateReturnInput) -> (ReturnBill);
+  createSupplier: (shopId: text, name: text, businessType: text, phone: 
+   text, email: opt text, address: opt text, city: opt text,
+   defaultTransportCharge: opt text) -> (Supplier);
+  createSupplierPurchase: (shopId: text, supplierId: SupplierId, productId:
+   nat, quantity: float64, purchasePrice: text, transportCharge: text, notes:
+   opt text) -> (SupplierPurchase);
+  deleteAdminNote: (noteId: nat) -> (variant {
+                                       err: text;
+                                       ok;
+                                     });
+  deleteProduct: (id: ProductId) -> (bool);
+  deleteSupplier: (supplierId: SupplierId) -> (bool);
+  generateBillShareToken: (billId: BillId) -> (opt text);
+  getAdminNotes: (targetPrincipal: text) ->
+   (variant {
+      err: text;
+      ok: vec AdminNoteView;
+    });
+  getAllShops: () -> (variant {
+                        err: text;
+                        ok: vec ShopAdminView;
+                      });
+  getAllUsers: () -> (variant {
+                        err: text;
+                        ok: vec UserView;
+                      });
+  getBill: (id: BillId) -> (opt Bill) query;
+  getCustomerBills: (shopId: text, customerId: CustomerId) ->
+   (vec Bill) query;
+  getCustomerCredit: (shopId: text, customerPhone: text) -> (CustomerCredit);
+  getDeadStockProducts: (shopId: text, inactiveDays: nat) ->
+   (vec DeadStockProduct) query;
+  getDefaultCharges: () -> (opt SmartDefaultCharges) query;
+  getLastNPurchasesForProduct: (shopId: text, productId: nat, n: nat) ->
+   (vec SupplierPurchaseWithName) query;
+  getLowStockProducts: (shopId: text) -> (vec LowStockProduct) query;
+  getMetalRates: () -> (MetalRates) query;
+  getMyRole: (shopId: text) -> (ShopRole);
+  getNearExpiryProducts: (shopId: text) -> (vec NearExpiryProduct) query;
+  getNearExpiryProductsByDays: (shopId: text, withinDays: nat) ->
+   (vec NearExpiryProduct) query;
+  getPendingPaymentBills: (shopId: text) -> (vec Bill);
+  getProduct: (id: ProductId) -> (opt ProductView) query;
+  getProductByBarcode: (shopId: text, barcode: text) ->
+   (opt ProductView) query;
+  getPublicBill: (billId: BillId, shareToken: text) ->
+   (opt PublicBillView) query;
+  getReturnsByBill: (shopId: text, billId: BillId) -> (vec ReturnBill) query;
+  getSalesSummary: (period: AnalyticsPeriod) -> (SalesSummary) query;
+  getShopConfig: () -> (opt ShopConfig) query;
+  getShopCustomers: (shopId: text) -> (vec CustomerView) query;
+  getShopStaff: (shopId: text) -> (vec StaffMember);
+  getSupplier: (supplierId: SupplierId) -> (opt Supplier) query;
+  getTopProducts: (period: AnalyticsPeriod, limit: nat) ->
+   (vec TopProduct) query;
+  getUserDetails: ("principal": text) -> (variant {
+                                            err: text;
+                                            ok: UserView;
+                                          });
+  initAdmin: () -> (bool);
+  isAdminCaller: () -> (bool) query;
+  isSetupComplete: () -> (bool) query;
+  listBills: (filter: BillFilter) -> (vec Bill) query;
+  listProducts: (filter: ProductFilter) -> (vec ProductView) query;
+  listPurchasesByProduct: (shopId: text, productId: nat) ->
+   (vec SupplierPurchase) query;
+  listPurchasesBySupplier: (shopId: text, supplierId: SupplierId) ->
+   (vec SupplierPurchase) query;
+  listReturns: (shopId: text, filter: ReturnFilter) -> (vec ReturnBill);
+  listSuppliersByShop: (shopId: text) -> (vec Supplier) query;
+  recordPayment: (shopId: text, billId: BillId, additionalAmount: float64) ->
+   (Bill);
+  recordReminderSent: (shopId: text, billId: BillId) -> ();
+  recordUserLogin: (shopName: text, shopType: text) -> ();
+  refreshMetalRates: () -> ();
+  rejectReturn: (shopId: text, input: RejectReturnInput) -> (ReturnBill);
+  removeStaff: (shopId: text, staffPrincipal: principal) -> (Result);
+  saveShopConfig: (config: ShopConfig) -> (ShopConfig);
+  searchCustomers: (shopId: text, searchQuery: text) ->
+   (vec CustomerView) query;
+  searchProducts: (shopId: text, searchTerm: text) -> (vec ProductView) query;
+  setDefaultCharges: (charges: SmartDefaultCharges) -> (opt ShopConfig);
+  setMetalRatesManual: (gold24kPerGram: float64, silverPerGram: float64) ->
+   ();
+  setShopDisabled: ("principal": text, disabled: bool) ->
+   (variant {
+      err: text;
+      ok;
+    });
+  transformRatesResponse: (input: TransformationInput) ->
+   (TransformationOutput) query;
+  updateProduct: (input: UpdateProductInput) -> (opt ProductView);
+  updateShopConfig: (config: ShopConfig) -> (opt ShopConfig);
+  updateSupplier: (supplierId: SupplierId, name: text, businessType: 
+   text, phone: text, email: opt text, address: opt text, city: opt text,
+   defaultTransportCharge: opt text) -> (opt Supplier);
+}
