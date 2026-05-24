@@ -99,12 +99,23 @@ export function SuperAdminProvider({ children }: { children: ReactNode }) {
       const result = await actorInstance.isAdminCaller();
       // Persist to both module cache and localStorage
       adminResultCache = result;
-      writeStoredAdminStatus(result);
+      // CRITICAL: only write to localStorage when true; NEVER remove when false
+      // during an active session — only resetSuperAdminCache() on logout may clear it.
+      if (result) {
+        writeStoredAdminStatus(true);
+      }
+      // Mark check as complete ONLY on success
+      checkDone.current = true;
       setState({ isSuperAdmin: result, isChecking: false });
     } catch {
-      // Backend error → keep current displayed value, just stop the checking indicator.
-      // Do NOT flip isSuperAdmin to false on a network error — could hide a real admin.
+      // Backend error → keep current displayed value (never flip true→false on network error).
+      // Do NOT set checkDone.current=true on error — allow retry on next render.
+      checkDone.current = false;
       setState((prev) => ({ ...prev, isChecking: false }));
+      // Schedule one automatic retry after 2 seconds
+      setTimeout(() => {
+        checkDone.current = false;
+      }, 2000);
     }
   }, []);
 
@@ -120,6 +131,7 @@ export function SuperAdminProvider({ children }: { children: ReactNode }) {
 
     // Already ran the check in this session
     if (checkDone.current) return;
+    // Mark as in-progress immediately to prevent double-invocation
     checkDone.current = true;
 
     void runAdminCheck(actor);

@@ -83,6 +83,17 @@ module {
     }).toArray();
   };
 
+  // ── Shop data cleanup ─────────────────────────────────────────────────────────
+  /// Removes all suppliers and purchases belonging to a given shop.
+  public func deleteShopSuppliers(state : State, shopId : Text) {
+    let remSuppliers = state.suppliers.filter(func(s : Types.Supplier) : Bool { s.shopId != shopId });
+    state.suppliers.clear();
+    state.suppliers.append(remSuppliers);
+    let remPurchases = state.supplierPurchases.filter(func(p : Types.SupplierPurchase) : Bool { p.shopId != shopId });
+    state.supplierPurchases.clear();
+    state.supplierPurchases.append(remPurchases);
+  };
+
   public func listPurchasesByProduct(state : State, shopId : Text, productId : Nat) : [Types.SupplierPurchase] {
     state.supplierPurchases.filter(func(p : Types.SupplierPurchase) : Bool {
       p.shopId == shopId and p.productId == productId

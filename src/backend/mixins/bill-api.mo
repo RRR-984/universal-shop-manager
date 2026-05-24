@@ -8,14 +8,17 @@ import RolesLib "../lib/roles";
 
 mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { var config : ?Types.ShopConfig }, rolesState : RolesLib.State) {
   // ── Bill CRUD ─────────────────────────────────────────────────────────────
-  public shared func createBill(input : Types.CreateBillInput) : async Types.Bill {
+  public shared ({ caller }) func createBill(shopId : Text, input : Types.CreateBillInput) : async Types.Bill {
     let shopConfig = switch (settingsState.config) {
       case null Runtime.trap("Shop not configured. Please complete setup first.");
       case (?cfg) cfg;
     };
 
+    // Bind shopId into the input record for bill isolation
+    let isolatedInput : Types.CreateBillInput = { input with shopId };
+
     // Pre-compute enriched items (with tax) to calculate profit and deduct stock
-    let enriched = BillLib.enrichItems(input.items, shopConfig.taxRate, shopConfig.taxSystem);
+    let enriched = BillLib.enrichItems(isolatedInput.items, shopConfig.taxRate, shopConfig.taxSystem);
 
     // Calculate profit using product cost prices
     var profit : Float = 0.0;
@@ -39,7 +42,7 @@ mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { v
       ProdLib.updateLastSaleTime(prodState, effectiveId, saleTime);
     });
 
-    BillLib.createBill(billState, input, shopConfig, profit);
+    BillLib.createBill(billState, isolatedInput, shopConfig, profit);
   };
 
   // ── Bill sharing ───────────────────────────────────────────────────────────
@@ -55,8 +58,10 @@ mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { v
     BillLib.getBill(billState, id);
   };
 
-  public query func listBills(filter : Types.BillFilter) : async [Types.Bill] {
-    BillLib.listBills(billState, filter);
+  public shared ({ caller }) func listBills(shopId : Text, filter : Types.BillFilter) : async [Types.Bill] {
+    RolesLib.ensureOwner(rolesState, shopId, caller);
+    let isolatedFilter : Types.BillFilter = { filter with shopId = ?shopId };
+    BillLib.listBills(billState, isolatedFilter);
   };
 
   public shared func cancelBill(id : Types.BillId) : async Bool {
@@ -98,11 +103,13 @@ mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { v
   };
 
   // ── Analytics ─────────────────────────────────────────────────────────────
-  public query func getSalesSummary(period : Types.AnalyticsPeriod) : async Types.SalesSummary {
-    BillLib.getSalesSummary(billState, period);
+  public shared ({ caller }) func getSalesSummary(shopId : Text, period : Types.AnalyticsPeriod) : async Types.SalesSummary {
+    RolesLib.ensureOwner(rolesState, shopId, caller);
+    BillLib.getSalesSummary(billState, shopId, period);
   };
 
-  public query func getTopProducts(period : Types.AnalyticsPeriod, limit : Nat) : async [Types.TopProduct] {
-    BillLib.getTopProducts(billState, period, limit);
+  public shared ({ caller }) func getTopProducts(shopId : Text, period : Types.AnalyticsPeriod, limit : Nat) : async [Types.TopProduct] {
+    RolesLib.ensureOwner(rolesState, shopId, caller);
+    BillLib.getTopProducts(billState, shopId, period, limit);
   };
 };

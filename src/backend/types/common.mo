@@ -380,6 +380,7 @@ module {
 
   public type Bill = {
     id               : BillId;
+    shopId           : Text;        // shop identifier — isolates bills per shop
     billNumber       : Nat;
     customerName     : Text;
     customerPhone    : Text;
@@ -407,6 +408,7 @@ module {
   public type BillView = Bill;
 
   public type CreateBillInput = {
+    shopId         : Text;           // shop identifier — must be set by frontend from active shop
     customerName   : Text;
     customerPhone  : Text;
     items          : [BillItem];
@@ -419,10 +421,11 @@ module {
   };
 
   public type BillFilter = {
-    fromDate     : ?Timestamp;
-    toDate       : ?Timestamp;
+    shopId         : ?Text;       // filter by shop; null = no filter (admin/internal use)
+    fromDate       : ?Timestamp;
+    toDate         : ?Timestamp;
     searchCustomer : ?Text;
-    status       : ?BillStatus;
+    status         : ?BillStatus;
   };
 
   // ── Analytics ────────────────────────────────────────────────────────────────

@@ -89,6 +89,7 @@ export const PriceType = IDL.Variant({
 });
 export const CreateBillInput = IDL.Record({
   'customerName' : IDL.Text,
+  'shopId' : IDL.Text,
   'customerPhone' : IDL.Text,
   'amountPaid' : IDL.Float64,
   'billDiscount' : IDL.Float64,
@@ -118,6 +119,7 @@ export const Bill = IDL.Record({
   'id' : BillId,
   'customerName' : IDL.Text,
   'status' : BillStatus,
+  'shopId' : IDL.Text,
   'customerPhone' : IDL.Text,
   'createdAt' : Timestamp,
   'shareToken' : IDL.Opt(IDL.Text),
@@ -560,6 +562,7 @@ export const TopProduct = IDL.Record({
 });
 export const BillFilter = IDL.Record({
   'status' : IDL.Opt(BillStatus),
+  'shopId' : IDL.Opt(IDL.Text),
   'searchCustomer' : IDL.Opt(IDL.Text),
   'toDate' : IDL.Opt(Timestamp),
   'fromDate' : IDL.Opt(Timestamp),
@@ -644,7 +647,7 @@ export const idlService = IDL.Service({
     ),
   'approveReturn' : IDL.Func([IDL.Text, ReturnBillId], [ReturnBill], []),
   'cancelBill' : IDL.Func([BillId], [IDL.Bool], []),
-  'createBill' : IDL.Func([CreateBillInput], [Bill], []),
+  'createBill' : IDL.Func([IDL.Text, CreateBillInput], [Bill], []),
   'createOrUpdateCustomer' : IDL.Func(
       [IDL.Text, IDL.Text, IDL.Text],
       [CustomerId],
@@ -749,20 +752,16 @@ export const idlService = IDL.Service({
       [IDL.Opt(PublicBillView)],
       ['query'],
     ),
-  'getReturnsByBill' : IDL.Func(
-      [IDL.Text, BillId],
-      [IDL.Vec(ReturnBill)],
-      ['query'],
-    ),
-  'getSalesSummary' : IDL.Func([AnalyticsPeriod], [SalesSummary], ['query']),
+  'getReturnsByBill' : IDL.Func([IDL.Text, BillId], [IDL.Vec(ReturnBill)], []),
+  'getSalesSummary' : IDL.Func([IDL.Text, AnalyticsPeriod], [SalesSummary], []),
   'getShopConfig' : IDL.Func([], [IDL.Opt(ShopConfig)], ['query']),
   'getShopCustomers' : IDL.Func([IDL.Text], [IDL.Vec(CustomerView)], ['query']),
   'getShopStaff' : IDL.Func([IDL.Text], [IDL.Vec(StaffMember)], []),
   'getSupplier' : IDL.Func([SupplierId], [IDL.Opt(Supplier)], ['query']),
   'getTopProducts' : IDL.Func(
-      [AnalyticsPeriod, IDL.Nat],
+      [IDL.Text, AnalyticsPeriod, IDL.Nat],
       [IDL.Vec(TopProduct)],
-      ['query'],
+      [],
     ),
   'getUserDetails' : IDL.Func(
       [IDL.Text],
@@ -772,7 +771,7 @@ export const idlService = IDL.Service({
   'initAdmin' : IDL.Func([], [IDL.Bool], []),
   'isAdminCaller' : IDL.Func([], [IDL.Bool], ['query']),
   'isSetupComplete' : IDL.Func([], [IDL.Bool], ['query']),
-  'listBills' : IDL.Func([BillFilter], [IDL.Vec(Bill)], ['query']),
+  'listBills' : IDL.Func([IDL.Text, BillFilter], [IDL.Vec(Bill)], []),
   'listProducts' : IDL.Func([ProductFilter], [IDL.Vec(ProductView)], ['query']),
   'listPurchasesByProduct' : IDL.Func(
       [IDL.Text, IDL.Nat],
@@ -918,6 +917,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const CreateBillInput = IDL.Record({
     'customerName' : IDL.Text,
+    'shopId' : IDL.Text,
     'customerPhone' : IDL.Text,
     'amountPaid' : IDL.Float64,
     'billDiscount' : IDL.Float64,
@@ -947,6 +947,7 @@ export const idlFactory = ({ IDL }) => {
     'id' : BillId,
     'customerName' : IDL.Text,
     'status' : BillStatus,
+    'shopId' : IDL.Text,
     'customerPhone' : IDL.Text,
     'createdAt' : Timestamp,
     'shareToken' : IDL.Opt(IDL.Text),
@@ -1389,6 +1390,7 @@ export const idlFactory = ({ IDL }) => {
   });
   const BillFilter = IDL.Record({
     'status' : IDL.Opt(BillStatus),
+    'shopId' : IDL.Opt(IDL.Text),
     'searchCustomer' : IDL.Opt(IDL.Text),
     'toDate' : IDL.Opt(Timestamp),
     'fromDate' : IDL.Opt(Timestamp),
@@ -1470,7 +1472,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'approveReturn' : IDL.Func([IDL.Text, ReturnBillId], [ReturnBill], []),
     'cancelBill' : IDL.Func([BillId], [IDL.Bool], []),
-    'createBill' : IDL.Func([CreateBillInput], [Bill], []),
+    'createBill' : IDL.Func([IDL.Text, CreateBillInput], [Bill], []),
     'createOrUpdateCustomer' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Text],
         [CustomerId],
@@ -1582,9 +1584,13 @@ export const idlFactory = ({ IDL }) => {
     'getReturnsByBill' : IDL.Func(
         [IDL.Text, BillId],
         [IDL.Vec(ReturnBill)],
-        ['query'],
+        [],
       ),
-    'getSalesSummary' : IDL.Func([AnalyticsPeriod], [SalesSummary], ['query']),
+    'getSalesSummary' : IDL.Func(
+        [IDL.Text, AnalyticsPeriod],
+        [SalesSummary],
+        [],
+      ),
     'getShopConfig' : IDL.Func([], [IDL.Opt(ShopConfig)], ['query']),
     'getShopCustomers' : IDL.Func(
         [IDL.Text],
@@ -1594,9 +1600,9 @@ export const idlFactory = ({ IDL }) => {
     'getShopStaff' : IDL.Func([IDL.Text], [IDL.Vec(StaffMember)], []),
     'getSupplier' : IDL.Func([SupplierId], [IDL.Opt(Supplier)], ['query']),
     'getTopProducts' : IDL.Func(
-        [AnalyticsPeriod, IDL.Nat],
+        [IDL.Text, AnalyticsPeriod, IDL.Nat],
         [IDL.Vec(TopProduct)],
-        ['query'],
+        [],
       ),
     'getUserDetails' : IDL.Func(
         [IDL.Text],
@@ -1606,7 +1612,7 @@ export const idlFactory = ({ IDL }) => {
     'initAdmin' : IDL.Func([], [IDL.Bool], []),
     'isAdminCaller' : IDL.Func([], [IDL.Bool], ['query']),
     'isSetupComplete' : IDL.Func([], [IDL.Bool], ['query']),
-    'listBills' : IDL.Func([BillFilter], [IDL.Vec(Bill)], ['query']),
+    'listBills' : IDL.Func([IDL.Text, BillFilter], [IDL.Vec(Bill)], []),
     'listProducts' : IDL.Func(
         [ProductFilter],
         [IDL.Vec(ProductView)],

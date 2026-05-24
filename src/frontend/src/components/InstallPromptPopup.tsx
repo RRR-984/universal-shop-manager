@@ -150,7 +150,7 @@ export function InstallPromptPopup() {
   return (
     <dialog
       aria-modal="false"
-      aria-label="Install Universal Shop Manager"
+      aria-label="Install Universal Shop System"
       data-ocid="install_prompt.dialog"
       className={[
         "fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-[9999]",

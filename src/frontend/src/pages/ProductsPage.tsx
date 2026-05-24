@@ -5004,7 +5004,7 @@ function ProductModal({
   ) => Promise<void>;
 }) {
   const isEdit = !!editProduct;
-  const shopConfig = useStore((s) => s.shopConfig);
+  const _shopConfig = useStore((s) => s.shopConfig);
   const api = useApi();
   const [form, setFormState] = useState<ProductFormState>(() => {
     const base = initialForm(shopType);
@@ -5242,7 +5242,7 @@ function ProductModal({
         await onSave(input, true, form.supplierId);
       } else {
         const input: CreateProductInput = {
-          shopId: shopConfig?.shopName ?? "",
+          shopId: shopId,
           name: productName,
           category: form.category,
           unit: form.unit,
@@ -6411,6 +6411,7 @@ export function ProductsPage() {
   const api = useApi();
   const navigate = useNavigate();
   const shopConfig = useStore((s) => s.shopConfig);
+  const activeShopId = useStore((s) => s.activeShopId);
   // Cast shopType to allow frontend-only BuildingMaterial and FruitsVegetables values
   const shopType = (shopConfig?.shopType ?? ShopType.General) as
     | ShopType
@@ -6451,7 +6452,7 @@ export function ProductsPage() {
     try {
       const [data, supplierList] = await Promise.all([
         api.listProducts({ isActive: true }),
-        api.listSuppliersByShop(shopConfig?.shopName ?? ""),
+        api.listSuppliersByShop(activeShopId ?? shopConfig?.shopName ?? ""),
       ]);
       if (!cancelled) {
         setProducts(data);
@@ -6464,7 +6465,7 @@ export function ProductsPage() {
     return () => {
       cancelled = true;
     };
-  }, [api, shopConfig?.shopName]);
+  }, [api, activeShopId, shopConfig?.shopName]);
 
   useEffect(() => {
     void loadProducts();
@@ -6601,7 +6602,7 @@ export function ProductsPage() {
       }, 5000);
       try {
         const results = await api.searchProducts(
-          shopConfig?.shopName ?? "",
+          activeShopId ?? shopConfig?.shopName ?? "",
           searchTerm,
         );
         if (!cancelled) setProducts(results);
@@ -6614,7 +6615,7 @@ export function ProductsPage() {
       cancelled = true;
       if (searchTimer.current) clearTimeout(searchTimer.current);
     };
-  }, [searchTerm, api, loadProducts, shopConfig]);
+  }, [searchTerm, api, loadProducts, shopConfig, activeShopId]);
 
   const categories = useMemo(() => {
     const cats = new Set(products.map((p) => p.category).filter(Boolean));
@@ -6665,7 +6666,7 @@ export function ProductsPage() {
           try {
             const upd = input as UpdateProductInput;
             await api.createSupplierPurchase(
-              shopConfig?.shopName ?? "",
+              activeShopId ?? shopConfig?.shopName ?? "",
               supplierId,
               upd.id,
               upd.stock ?? 0,
@@ -7177,7 +7178,7 @@ export function ProductsPage() {
           editProduct={editProduct}
           currency={currency}
           metalRates={metalRates}
-          shopId={shopConfig?.shopName ?? ""}
+          shopId={activeShopId ?? shopConfig?.shopName ?? ""}
           suppliers={suppliers}
           onClose={() => {
             setShowModal(false);

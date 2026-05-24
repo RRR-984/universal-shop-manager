@@ -68,6 +68,7 @@ module {
 
     let bill : Types.Bill = {
       id            = id;
+      shopId        = input.shopId;
       billNumber    = billNumber;
       customerName  = input.customerName;
       customerPhone = input.customerPhone;
@@ -167,6 +168,10 @@ module {
 
   public func listBills(state : State, filter : Types.BillFilter) : [Types.Bill] {
     state.bills.filter(func(b : Types.Bill) : Bool {
+      let matchShop = switch (filter.shopId) {
+        case null true;
+        case (?sid) b.shopId == sid;
+      };
       let matchFrom = switch (filter.fromDate) {
         case null true;
         case (?fd) b.createdAt >= fd;
@@ -187,7 +192,7 @@ module {
         case null true;
         case (?st) b.status == st;
       };
-      matchFrom and matchTo and matchCustomer and matchStatus;
+      matchShop and matchFrom and matchTo and matchCustomer and matchStatus;
     }).toArray();
   };
 
@@ -250,7 +255,7 @@ module {
   };
 
   // ── Analytics ────────────────────────────────────────────────────────────────
-  public func getSalesSummary(state : State, period : Types.AnalyticsPeriod) : Types.SalesSummary {
+  public func getSalesSummary(state : State, shopId : Text, period : Types.AnalyticsPeriod) : Types.SalesSummary {
     let periodStart = periodStartTime(period);
     let now         = Time.now();
 
@@ -259,7 +264,7 @@ module {
     var billCount   : Nat   = 0;
 
     state.bills.forEach(func(b : Types.Bill) {
-      if (b.status == #Saved and b.createdAt >= periodStart and b.createdAt <= now) {
+      if (b.shopId == shopId and b.status == #Saved and b.createdAt >= periodStart and b.createdAt <= now) {
         totalSales  += b.grandTotal;
         totalProfit += b.profit;
         billCount   += 1;
@@ -269,7 +274,7 @@ module {
     { totalSales; totalProfit; billCount };
   };
 
-  public func getTopProducts(state : State, period : Types.AnalyticsPeriod, limit : Nat) : [Types.TopProduct] {
+  public func getTopProducts(state : State, shopId : Text, period : Types.AnalyticsPeriod, limit : Nat) : [Types.TopProduct] {
     let periodStart = periodStartTime(period);
     let now         = Time.now();
 
@@ -279,7 +284,7 @@ module {
     let nameMap = Map.empty<Types.ProductId, Text>();
 
     state.bills.forEach(func(b : Types.Bill) {
-      if (b.status == #Saved and b.createdAt >= periodStart and b.createdAt <= now) {
+      if (b.shopId == shopId and b.status == #Saved and b.createdAt >= periodStart and b.createdAt <= now) {
         for (item in b.items.values()) {
           let pid     = item.productId;
           let prevQty = switch (qtyMap.get(pid))  { case null 0.0; case (?v) v };
@@ -314,6 +319,14 @@ module {
 
     let takeN : Int = Nat.min(limit, sorted.size()).toInt();
     sorted.sliceToArray(0, takeN);
+  };
+
+  // ── Shop data cleanup ─────────────────────────────────────────────────────────
+  /// Removes all bills belonging to a given shop — called by adminDeleteShop cascade.
+  public func deleteShopBills(state : State, shopId : Text) {
+    let remaining = state.bills.filter(func(b : Types.Bill) : Bool { b.shopId != shopId });
+    state.bills.clear();
+    state.bills.append(remaining);
   };
 
   // ── Calculation helpers ───────────────────────────────────────────────────────

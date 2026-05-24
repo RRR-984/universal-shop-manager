@@ -252,6 +252,26 @@ module {
     #ok updated;
   };
 
+  // ── Shop data cleanup ─────────────────────────────────────────────────────────
+  /// Removes all returns and credits belonging to a given shop.
+  public func deleteShopReturns(self : State, shopId : Text) {
+    let toDelete = List.empty<ReturnTypes.ReturnBillId>();
+    for ((id, rb) in self.returns.entries()) {
+      if (rb.shopId == shopId) { toDelete.add(id) };
+    };
+    for (id in toDelete.values()) {
+      ignore self.returns.remove(id);
+    };
+    // Remove store credits for this shop
+    let creditKeysToDelete = List.empty<Text>();
+    for ((key, credit) in self.credits.entries()) {
+      if (credit.shopId == shopId) { creditKeysToDelete.add(key) };
+    };
+    for (key in creditKeysToDelete.values()) {
+      ignore self.credits.remove(key);
+    };
+  };
+
   // ── Reverse stock for returned items (called by approveReturn path) ───────────
   // Returns list of (productId, qty) pairs for the product lib to re-add stock
   public func returnedStockAdjustments(

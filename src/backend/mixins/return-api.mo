@@ -73,11 +73,12 @@ mixin (
     returnState.listReturns(shopId, filter);
   };
 
-  // ── Get all returns tied to a specific bill ────────────────────────────────────
-  public query func getReturnsByBill(
+  // ── Get all returns tied to a specific bill (owner-only) ──────────────────────
+  public shared ({ caller }) func getReturnsByBill(
     shopId : Text,
     billId : Types.BillId,
   ) : async [ReturnTypes.ReturnBill] {
+    RolesLib.ensureOwner(rolesState, shopId, caller);
     returnState.getReturnsByBill(shopId, billId);
   };
 

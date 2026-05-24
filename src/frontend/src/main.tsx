@@ -14,11 +14,12 @@ const STORED_VERSION_KEY = "app_version";
 const storedVersion = localStorage.getItem(STORED_VERSION_KEY);
 if (storedVersion !== BUILD_VERSION) {
   // Clear stale app state — but PRESERVE critical permanent markers:
-  //   usm-reg-* : registration markers (one per principal, written once, must NEVER be cleared)
-  //   usm-admin-*: admin principal markers (not used anymore but keep for safety)
-  // These markers tell the app "this user has already completed setup" and
-  // "this principal is the super admin". Clearing them forces users through
-  // the setup wizard again and breaks admin detection after deployment.
+  //   usm-reg-*          : registration markers (one per principal, NEVER clear)
+  //   usm-admin-*        : legacy admin markers (keep for safety)
+  //   usm-super-admin-v1 : super admin localStorage flag (NEVER clear on deploy)
+  //   usm-store          : Zustand persisted shop config / setup state
+  //   usm-setup-done     : CRITICAL setup-done flag
+  // Clearing these forces users through setup wizard or breaks admin detection.
   const keysToRemove: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
@@ -30,10 +31,11 @@ if (storedVersion !== BUILD_VERSION) {
       !key.startsWith("delegation") &&
       !key.startsWith("IDENTITY") &&
       !key.startsWith("auth") &&
-      !key.startsWith("usm-reg-") && // CRITICAL: registration markers must survive cache clear
-      !key.startsWith("usm-admin-") && // preserve any existing admin markers
-      !key.startsWith("usm-store") && // preserve Zustand shop config / setup state
-      key !== "usm-setup-done" // CRITICAL: setup-done flag must survive cache clear
+      !key.startsWith("usm-reg-") && // CRITICAL: registration markers
+      !key.startsWith("usm-admin-") && // legacy admin markers
+      !key.startsWith("usm-store") && // Zustand shop config / setup state
+      key !== "usm-setup-done" && // CRITICAL: setup-done flag
+      key !== "usm-super-admin-v1" // CRITICAL: super-admin flag
     ) {
       keysToRemove.push(key);
     }

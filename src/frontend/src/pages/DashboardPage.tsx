@@ -357,7 +357,8 @@ export function DashboardPage() {
   const multiShopCount = selectedShopIds.length;
 
   // Active shop ID — used for all shop-scoped API calls
-  const shopId = shopConfig?.shopName ?? "";
+  const activeShopId = useStore((s) => s.activeShopId);
+  const shopId = activeShopId ?? shopConfig?.shopName ?? "";
 
   // Load period-dependent data
   useEffect(() => {
@@ -367,7 +368,10 @@ export function DashboardPage() {
     const timeout = setTimeout(() => {
       if (!cancelled) setLoading(false);
     }, 5000);
-    Promise.all([getSalesSummary(period), getTopProducts(period, 10n)])
+    Promise.all([
+      getSalesSummary(shopId, period),
+      getTopProducts(shopId, period, 10n),
+    ])
       .then(([s, tp]) => {
         if (cancelled) return;
         setSummary(s);
@@ -381,7 +385,7 @@ export function DashboardPage() {
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [ready, period, getSalesSummary, getTopProducts]);
+  }, [ready, period, shopId, getSalesSummary, getTopProducts]);
 
   // Load alerts (not period-dependent) — scoped to active shop only
   useEffect(() => {

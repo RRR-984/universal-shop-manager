@@ -117,7 +117,8 @@ export function BillingPage() {
   const [appliedCredit, setAppliedCredit] = useState<number>(0);
   const [applyingCredit, setApplyingCredit] = useState(false);
 
-  const shopId = shopConfig?.shopName ?? "default";
+  const activeShopId = useStore((s) => s.activeShopId);
+  const shopId = activeShopId ?? shopConfig?.shopName ?? "default";
 
   // Fetch store credit when customer phone changes
   const creditFetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -402,7 +403,8 @@ export function BillingPage() {
             Math.max(0, Number(amountReceived) || 0),
           );
     try {
-      const bill = await api.createBill({
+      const bill = await api.createBill(shopId, {
+        shopId,
         customerName: customerName.trim() || "Anonymous",
         customerPhone: customerPhone.trim(),
         priceType,

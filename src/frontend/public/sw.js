@@ -1,4 +1,4 @@
-// Universal Shop Manager — Service Worker
+// Universal Shop System — Service Worker
 // Minimal cache-first strategy for static assets.
 // A service worker MUST exist for browsers to show the PWA install prompt.
 

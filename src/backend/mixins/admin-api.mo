@@ -1,10 +1,20 @@
-import Types     "../types/common";
-import ATypes    "../types/admin";
-import AdminLib  "../lib/admin";
-import RolesLib "../lib/roles";
-import ProdLib "../lib/product";
+import Types       "../types/common";
+import ATypes      "../types/admin";
+import AdminLib    "../lib/admin";
+import RolesLib    "../lib/roles";
+import ProdLib     "../lib/product";
+import BillLib     "../lib/bill";
+import SupplierLib "../lib/supplier";
+import ReturnLib   "../lib/return";
 
-mixin (adminState : AdminLib.State, rolesState : RolesLib.State, productState : ProdLib.State) {
+mixin (
+  adminState    : AdminLib.State,
+  rolesState    : RolesLib.State,
+  productState  : ProdLib.State,
+  billState     : BillLib.State,
+  supplierState : SupplierLib.State,
+  returnState   : ReturnLib.State,
+) {
 
   // ── Bootstrap: first caller becomes admin ──────────────────────────────────
   // Any admin endpoint call auto-promotes first-ever caller to admin.
@@ -93,6 +103,9 @@ mixin (adminState : AdminLib.State, rolesState : RolesLib.State, productState : 
     };
     RolesLib.removeShopData(rolesState, shopId);
     ProdLib.removeProductsByShopId(productState, shopId);
+    BillLib.deleteShopBills(billState, shopId);
+    SupplierLib.deleteShopSuppliers(supplierState, shopId);
+    returnState.deleteShopReturns(shopId);
     #ok(());
   };
 

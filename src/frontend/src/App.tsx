@@ -77,26 +77,29 @@ function RootLayout() {
 
   // ── SINGLE SOURCE OF TRUTH: localStorage marker ───────────────────────────
   const principalText = identity?.getPrincipal().toText() ?? null;
+
+  // Synchronous check — localStorage is always reliable and immediate.
+  // MUST be evaluated on every render so fresh navigations pick up new markers.
   const isRegisteredLocally =
     (principalText !== null &&
       localStorage.getItem(`usm-reg-${principalText}`) === "true") ||
     localStorage.getItem("usm-setup-done") === "true";
 
-  // setupAlreadyDone: checks ALL three signals — localStorage principal key,
-  // backup key, and Zustand persisted flag. Any one is sufficient.
-  // FIX #1: This is checked FIRST before isLoggedOut — localStorage is
-  // synchronous and must not be overridden by async identity state.
-  const setupAlreadyDone =
-    isRegisteredLocally ||
-    localStorage.getItem("usm-setup-done") === "true" ||
-    isSetupComplete === true;
+  // setupAlreadyDone: ANY of the three reliable signals is sufficient.
+  // localStorage is checked FIRST — it's synchronous and never lies.
+  const setupAlreadyDone = isRegisteredLocally || isSetupComplete === true;
 
   // ── AUTH CHECKING: block all routing until II loginStatus resolves ─────────
   const [authChecking, setAuthChecking] = useState(
     loginStatus === "initializing",
   );
 
-  // FIX #2: 5-second safety timeout — if II never resolves, unblock routing
+  // FIX: track whether we just came from a fresh setup (no loading spinner needed)
+  // When usm-setup-complete-nav is set, setup just finished — skip isLoading spinner.
+  const justCompletedSetup =
+    localStorage.getItem("usm-setup-complete-nav") === "1";
+
+  // Safety timeout — if II never resolves, unblock routing after 5s
   useEffect(() => {
     if (loginStatus !== "initializing") return;
     const timer = setTimeout(() => {
@@ -107,6 +110,21 @@ function RootLayout() {
     }, 5000);
     return () => clearTimeout(timer);
   }, [loginStatus]);
+
+  // Safety timeout for isLoading — if backend init hangs, returning users
+  // (setupAlreadyDone=true) should not see a perpetual spinner.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const currentIsLoading = useStore.getState().isLoading;
+      if (currentIsLoading) {
+        console.log(
+          "[Auth] isLoading safety timeout fired — backend init hung after 8s, forcing isLoading=false",
+        );
+        setIsLoading(false);
+      }
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [setIsLoading]);
 
   useEffect(() => {
     console.log("[Auth] loginStatus changed:", loginStatus);
@@ -120,9 +138,7 @@ function RootLayout() {
     }
   }, [loginStatus, identity]);
 
-  // Debug log on every render
-  console.log("[Auth] authChecking:", authChecking);
-  console.log("[Auth] setupAlreadyDone:", setupAlreadyDone);
+  // Debug log
   console.log("[Auth] RootLayout state:", {
     loginStatus,
     isAuthenticated: !!identity,
@@ -131,6 +147,7 @@ function RootLayout() {
     isSetupComplete,
     setupAlreadyDone,
     authChecking,
+    justCompletedSetup,
   });
 
   // ── Background sync: load backend config for freshness ───────────────────
@@ -162,6 +179,8 @@ function RootLayout() {
         }
       } finally {
         setIsLoading(false);
+        // Clear the fresh-setup nav flag now that backend init is done
+        localStorage.removeItem("usm-setup-complete-nav");
       }
     };
     void init();
@@ -180,7 +199,7 @@ function RootLayout() {
     setUserRole,
   ]);
 
-  // FIX #3: While II is still initialising, show full-screen loading spinner.
+  // While II is still initialising, show full-screen loading spinner.
   // NEVER redirect to login or show SetupPage during auth loading.
   if (authChecking) {
     console.log("[Route] Decision: showing loading because authChecking=true");
@@ -196,7 +215,6 @@ function RootLayout() {
     );
   }
 
-  // FIX #1 (CHECK ORDER): setupAlreadyDone is checked BEFORE isLoggedOut.
   // localStorage is synchronous — if the marker is there, the user HAS
   // completed setup. Don't let async identity=null override this fact.
   if (setupAlreadyDone) {
@@ -204,14 +222,17 @@ function RootLayout() {
       "[Route] Decision: showing dashboard/outlet because setupAlreadyDone=true",
     );
 
-    // ── Loading state ─────────────────────────────────────────────────────────
-    if (isLoading) {
+    // Show loading spinner for RETURNING users on cold boot only.
+    // If justCompletedSetup=true, skip the spinner — setup just finished
+    // and the user is being navigated in; showing a spinner here causes
+    // the login-loop (spinner → identity not yet confirmed → redirect to setup).
+    if (isLoading && !justCompletedSetup) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-background">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
             <p className="text-muted-foreground text-sm font-medium">
-              Loading Universal Shop Manager...
+              Loading Universal Shop System...
             </p>
           </div>
         </div>
@@ -221,11 +242,9 @@ function RootLayout() {
     return <Outlet />;
   }
 
-  // FIX #4: Only redirect to login/setup when ALL conditions are truly met:
-  // authChecking===false, loginStatus has fully resolved (not 'initializing'),
-  // identity===null, setupAlreadyDone===false.
-  // Valid resolved statuses: 'idle' (not logged in), 'success' (logged in),
-  // 'logging-in', 'loginError' — any non-'initializing' means II has finished.
+  // Only redirect to login/setup when ALL conditions are truly met:
+  // authChecking===false, loginStatus has fully resolved, identity===null,
+  // setupAlreadyDone===false.
   const isLoggedOut =
     !isAuthenticated &&
     !identity &&
@@ -233,9 +252,7 @@ function RootLayout() {
     authChecking === false;
 
   if (isLoggedOut) {
-    console.log(
-      "[Route] Decision: showing SetupPage because isLoggedOut=true (identity=null, loginStatus=done, setupAlreadyDone=false)",
-    );
+    console.log("[Route] Decision: showing SetupPage because isLoggedOut=true");
     return (
       <Suspense fallback={<PageSpinner />}>
         <SetupPage />
@@ -243,10 +260,10 @@ function RootLayout() {
     );
   }
 
-  // ── Setup wizard (authenticated but setup not done) ───────────────────────
+  // Authenticated but setup not done
   if (!setupAlreadyDone) {
     console.log(
-      "[Route] Decision: showing SetupPage because !setupAlreadyDone (authenticated but setup incomplete)",
+      "[Route] Decision: showing SetupPage because !setupAlreadyDone",
     );
     return (
       <Suspense fallback={<PageSpinner />}>

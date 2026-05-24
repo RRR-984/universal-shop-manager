@@ -46,6 +46,7 @@ export interface Bill {
   'id' : BillId,
   'customerName' : string,
   'status' : BillStatus,
+  'shopId' : string,
   'customerPhone' : string,
   'createdAt' : Timestamp,
   'shareToken' : [] | [string],
@@ -68,6 +69,7 @@ export interface Bill {
 }
 export interface BillFilter {
   'status' : [] | [BillStatus],
+  'shopId' : [] | [string],
   'searchCustomer' : [] | [string],
   'toDate' : [] | [Timestamp],
   'fromDate' : [] | [Timestamp],
@@ -104,6 +106,7 @@ export interface ClothingFields {
 }
 export interface CreateBillInput {
   'customerName' : string,
+  'shopId' : string,
   'customerPhone' : string,
   'amountPaid' : number,
   'billDiscount' : number,
@@ -603,7 +606,7 @@ export interface _SERVICE {
   >,
   'approveReturn' : ActorMethod<[string, ReturnBillId], ReturnBill>,
   'cancelBill' : ActorMethod<[BillId], boolean>,
-  'createBill' : ActorMethod<[CreateBillInput], Bill>,
+  'createBill' : ActorMethod<[string, CreateBillInput], Bill>,
   'createOrUpdateCustomer' : ActorMethod<[string, string, string], CustomerId>,
   'createProduct' : ActorMethod<[CreateProductInput], ProductView>,
   'createReturn' : ActorMethod<[string, CreateReturnInput], ReturnBill>,
@@ -672,12 +675,15 @@ export interface _SERVICE {
   'getProductByBarcode' : ActorMethod<[string, string], [] | [ProductView]>,
   'getPublicBill' : ActorMethod<[BillId, string], [] | [PublicBillView]>,
   'getReturnsByBill' : ActorMethod<[string, BillId], Array<ReturnBill>>,
-  'getSalesSummary' : ActorMethod<[AnalyticsPeriod], SalesSummary>,
+  'getSalesSummary' : ActorMethod<[string, AnalyticsPeriod], SalesSummary>,
   'getShopConfig' : ActorMethod<[], [] | [ShopConfig]>,
   'getShopCustomers' : ActorMethod<[string], Array<CustomerView>>,
   'getShopStaff' : ActorMethod<[string], Array<StaffMember>>,
   'getSupplier' : ActorMethod<[SupplierId], [] | [Supplier]>,
-  'getTopProducts' : ActorMethod<[AnalyticsPeriod, bigint], Array<TopProduct>>,
+  'getTopProducts' : ActorMethod<
+    [string, AnalyticsPeriod, bigint],
+    Array<TopProduct>
+  >,
   'getUserDetails' : ActorMethod<
     [string],
     { 'ok' : UserView } |
@@ -686,7 +692,7 @@ export interface _SERVICE {
   'initAdmin' : ActorMethod<[], boolean>,
   'isAdminCaller' : ActorMethod<[], boolean>,
   'isSetupComplete' : ActorMethod<[], boolean>,
-  'listBills' : ActorMethod<[BillFilter], Array<Bill>>,
+  'listBills' : ActorMethod<[string, BillFilter], Array<Bill>>,
   'listProducts' : ActorMethod<[ProductFilter], Array<ProductView>>,
   'listPurchasesByProduct' : ActorMethod<
     [string, bigint],

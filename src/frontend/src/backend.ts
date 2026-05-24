@@ -122,6 +122,7 @@ export interface CreateReturnInput {
 }
 export interface BillFilter {
     status?: BillStatus;
+    shopId?: string;
     searchCustomer?: string;
     toDate?: Timestamp;
     fromDate?: Timestamp;
@@ -157,6 +158,7 @@ export interface FruitsVegetablesFields {
 }
 export interface CreateBillInput {
     customerName: string;
+    shopId: string;
     customerPhone: string;
     amountPaid: number;
     billDiscount: number;
@@ -260,6 +262,7 @@ export interface Bill {
     id: BillId;
     customerName: string;
     status: BillStatus;
+    shopId: string;
     customerPhone: string;
     createdAt: Timestamp;
     shareToken?: string;
@@ -772,7 +775,7 @@ export interface backendInterface {
     applyStoreCredit(shopId: string, input: ApplyStoreCreditInput): Promise<CustomerCredit>;
     approveReturn(shopId: string, returnBillId: ReturnBillId): Promise<ReturnBill>;
     cancelBill(id: BillId): Promise<boolean>;
-    createBill(input: CreateBillInput): Promise<Bill>;
+    createBill(shopId: string, input: CreateBillInput): Promise<Bill>;
     createOrUpdateCustomer(shopId: string, name: string, phone: string): Promise<CustomerId>;
     createProduct(input: CreateProductInput): Promise<ProductView>;
     createReturn(shopId: string, input: CreateReturnInput): Promise<ReturnBill>;
@@ -825,12 +828,12 @@ export interface backendInterface {
     getProductByBarcode(shopId: string, barcode: string): Promise<ProductView | null>;
     getPublicBill(billId: BillId, shareToken: string): Promise<PublicBillView | null>;
     getReturnsByBill(shopId: string, billId: BillId): Promise<Array<ReturnBill>>;
-    getSalesSummary(period: AnalyticsPeriod): Promise<SalesSummary>;
+    getSalesSummary(shopId: string, period: AnalyticsPeriod): Promise<SalesSummary>;
     getShopConfig(): Promise<ShopConfig | null>;
     getShopCustomers(shopId: string): Promise<Array<CustomerView>>;
     getShopStaff(shopId: string): Promise<Array<StaffMember>>;
     getSupplier(supplierId: SupplierId): Promise<Supplier | null>;
-    getTopProducts(period: AnalyticsPeriod, limit: bigint): Promise<Array<TopProduct>>;
+    getTopProducts(shopId: string, period: AnalyticsPeriod, limit: bigint): Promise<Array<TopProduct>>;
     getUserDetails(principal: string): Promise<{
         __kind__: "ok";
         ok: UserView;
@@ -841,7 +844,7 @@ export interface backendInterface {
     initAdmin(): Promise<boolean>;
     isAdminCaller(): Promise<boolean>;
     isSetupComplete(): Promise<boolean>;
-    listBills(filter: BillFilter): Promise<Array<Bill>>;
+    listBills(shopId: string, filter: BillFilter): Promise<Array<Bill>>;
     listProducts(filter: ProductFilter): Promise<Array<ProductView>>;
     listPurchasesByProduct(shopId: string, productId: bigint): Promise<Array<SupplierPurchase>>;
     listPurchasesBySupplier(shopId: string, supplierId: SupplierId): Promise<Array<SupplierPurchase>>;
@@ -1009,17 +1012,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async createBill(arg0: CreateBillInput): Promise<Bill> {
+    async createBill(arg0: string, arg1: CreateBillInput): Promise<Bill> {
         if (this.processError) {
             try {
-                const result = await this.actor.createBill(to_candid_CreateBillInput_n22(this._uploadFile, this._downloadFile, arg0));
+                const result = await this.actor.createBill(arg0, to_candid_CreateBillInput_n22(this._uploadFile, this._downloadFile, arg1));
                 return from_candid_Bill_n28(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createBill(to_candid_CreateBillInput_n22(this._uploadFile, this._downloadFile, arg0));
+            const result = await this.actor.createBill(arg0, to_candid_CreateBillInput_n22(this._uploadFile, this._downloadFile, arg1));
             return from_candid_Bill_n28(this._uploadFile, this._downloadFile, result);
         }
     }
@@ -1439,17 +1442,17 @@ export class Backend implements backendInterface {
             return from_candid_vec_n174(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getSalesSummary(arg0: AnalyticsPeriod): Promise<SalesSummary> {
+    async getSalesSummary(arg0: string, arg1: AnalyticsPeriod): Promise<SalesSummary> {
         if (this.processError) {
             try {
-                const result = await this.actor.getSalesSummary(to_candid_AnalyticsPeriod_n175(this._uploadFile, this._downloadFile, arg0));
+                const result = await this.actor.getSalesSummary(arg0, to_candid_AnalyticsPeriod_n175(this._uploadFile, this._downloadFile, arg1));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getSalesSummary(to_candid_AnalyticsPeriod_n175(this._uploadFile, this._downloadFile, arg0));
+            const result = await this.actor.getSalesSummary(arg0, to_candid_AnalyticsPeriod_n175(this._uploadFile, this._downloadFile, arg1));
             return result;
         }
     }
@@ -1509,17 +1512,17 @@ export class Backend implements backendInterface {
             return from_candid_opt_n192(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getTopProducts(arg0: AnalyticsPeriod, arg1: bigint): Promise<Array<TopProduct>> {
+    async getTopProducts(arg0: string, arg1: AnalyticsPeriod, arg2: bigint): Promise<Array<TopProduct>> {
         if (this.processError) {
             try {
-                const result = await this.actor.getTopProducts(to_candid_AnalyticsPeriod_n175(this._uploadFile, this._downloadFile, arg0), arg1);
+                const result = await this.actor.getTopProducts(arg0, to_candid_AnalyticsPeriod_n175(this._uploadFile, this._downloadFile, arg1), arg2);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getTopProducts(to_candid_AnalyticsPeriod_n175(this._uploadFile, this._downloadFile, arg0), arg1);
+            const result = await this.actor.getTopProducts(arg0, to_candid_AnalyticsPeriod_n175(this._uploadFile, this._downloadFile, arg1), arg2);
             return result;
         }
     }
@@ -1585,17 +1588,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async listBills(arg0: BillFilter): Promise<Array<Bill>> {
+    async listBills(arg0: string, arg1: BillFilter): Promise<Array<Bill>> {
         if (this.processError) {
             try {
-                const result = await this.actor.listBills(to_candid_BillFilter_n194(this._uploadFile, this._downloadFile, arg0));
+                const result = await this.actor.listBills(arg0, to_candid_BillFilter_n194(this._uploadFile, this._downloadFile, arg1));
                 return from_candid_vec_n158(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.listBills(to_candid_BillFilter_n194(this._uploadFile, this._downloadFile, arg0));
+            const result = await this.actor.listBills(arg0, to_candid_BillFilter_n194(this._uploadFile, this._downloadFile, arg1));
             return from_candid_vec_n158(this._uploadFile, this._downloadFile, result);
         }
     }
@@ -2813,6 +2816,7 @@ function from_candid_record_n29(_uploadFile: (file: ExternalBlob) => Promise<Uin
     id: _BillId;
     customerName: string;
     status: _BillStatus;
+    shopId: string;
     customerPhone: string;
     createdAt: _Timestamp;
     shareToken: [] | [string];
@@ -2836,6 +2840,7 @@ function from_candid_record_n29(_uploadFile: (file: ExternalBlob) => Promise<Uin
     id: BillId;
     customerName: string;
     status: BillStatus;
+    shopId: string;
     customerPhone: string;
     createdAt: Timestamp;
     shareToken?: string;
@@ -2860,6 +2865,7 @@ function from_candid_record_n29(_uploadFile: (file: ExternalBlob) => Promise<Uin
         id: value.id,
         customerName: value.customerName,
         status: from_candid_BillStatus_n30(_uploadFile, _downloadFile, value.status),
+        shopId: value.shopId,
         customerPhone: value.customerPhone,
         createdAt: value.createdAt,
         shareToken: record_opt_to_undefined(from_candid_opt_n18(_uploadFile, _downloadFile, value.shareToken)),
@@ -3679,17 +3685,20 @@ function to_candid_record_n144(_uploadFile: (file: ExternalBlob) => Promise<Uint
 }
 function to_candid_record_n195(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     status?: BillStatus;
+    shopId?: string;
     searchCustomer?: string;
     toDate?: Timestamp;
     fromDate?: Timestamp;
 }): {
     status: [] | [_BillStatus];
+    shopId: [] | [string];
     searchCustomer: [] | [string];
     toDate: [] | [_Timestamp];
     fromDate: [] | [_Timestamp];
 } {
     return {
         status: value.status ? candid_some(to_candid_BillStatus_n196(_uploadFile, _downloadFile, value.status)) : candid_none(),
+        shopId: value.shopId ? candid_some(value.shopId) : candid_none(),
         searchCustomer: value.searchCustomer ? candid_some(value.searchCustomer) : candid_none(),
         toDate: value.toDate ? candid_some(value.toDate) : candid_none(),
         fromDate: value.fromDate ? candid_some(value.fromDate) : candid_none()
@@ -3859,6 +3868,7 @@ function to_candid_record_n220(_uploadFile: (file: ExternalBlob) => Promise<Uint
 }
 function to_candid_record_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     customerName: string;
+    shopId: string;
     customerPhone: string;
     amountPaid: number;
     billDiscount: number;
@@ -3869,6 +3879,7 @@ function to_candid_record_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8
     staffCreatedBy?: Principal;
 }): {
     customerName: string;
+    shopId: string;
     customerPhone: string;
     amountPaid: number;
     billDiscount: number;
@@ -3880,6 +3891,7 @@ function to_candid_record_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8
 } {
     return {
         customerName: value.customerName,
+        shopId: value.shopId,
         customerPhone: value.customerPhone,
         amountPaid: value.amountPaid,
         billDiscount: value.billDiscount,

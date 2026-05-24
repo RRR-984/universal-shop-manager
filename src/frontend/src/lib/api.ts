@@ -146,9 +146,9 @@ export function useApi() {
   // Bills
 
   const createBill = useCallback(
-    async (input: CreateBillInput): Promise<Bill> => {
+    async (shopId: string, input: CreateBillInput): Promise<Bill> => {
       if (!actor) throw new Error("Actor not ready");
-      return actor.createBill(input);
+      return actor.createBill(shopId, input);
     },
     [actor],
   );
@@ -162,9 +162,9 @@ export function useApi() {
   );
 
   const listBills = useCallback(
-    async (filter: BillFilter): Promise<Bill[]> => {
+    async (shopId: string, filter: BillFilter): Promise<Bill[]> => {
       if (!actor) return [];
-      return actor.listBills(filter);
+      return actor.listBills(shopId, filter);
     },
     [actor],
   );
@@ -180,17 +180,21 @@ export function useApi() {
   // Analytics
 
   const getSalesSummary = useCallback(
-    async (period: AnalyticsPeriod): Promise<SalesSummary> => {
+    async (shopId: string, period: AnalyticsPeriod): Promise<SalesSummary> => {
       if (!actor) return { totalProfit: 0, totalSales: 0, billCount: 0n };
-      return actor.getSalesSummary(period);
+      return actor.getSalesSummary(shopId, period);
     },
     [actor],
   );
 
   const getTopProducts = useCallback(
-    async (period: AnalyticsPeriod, limit: bigint): Promise<TopProduct[]> => {
+    async (
+      shopId: string,
+      period: AnalyticsPeriod,
+      limit: bigint,
+    ): Promise<TopProduct[]> => {
       if (!actor) return [];
-      return actor.getTopProducts(period, limit);
+      return actor.getTopProducts(shopId, period, limit);
     },
     [actor],
   );

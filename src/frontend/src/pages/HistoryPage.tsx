@@ -1234,11 +1234,12 @@ const PAGE_SIZE = 20;
 export function HistoryPage() {
   const { listBills, cancelBill } = useApi();
   const shopConfig = useStore((s) => s.shopConfig);
+  const activeShopId = useStore((s) => s.activeShopId);
 
   const userRole = useStore((s) => s.userRole);
   const currency = shopConfig?.currency ?? "USD";
   const dateFormat = shopConfig?.dateFormat ?? DateFormat.DDMMYYYY;
-  const shopId = shopConfig?.shopName ?? "default";
+  const shopId = activeShopId ?? shopConfig?.shopName ?? "default";
   const isOwner = userRole !== "staff";
 
   const [bills, setBills] = useState<Bill[]>([]);
@@ -1275,7 +1276,7 @@ export function HistoryPage() {
         filter.fromDate = BigInt(new Date(fromDate).setHours(0, 0, 0, 0));
         filter.toDate = BigInt(new Date(toDate).setHours(23, 59, 59, 999));
       }
-      const data = await listBills(filter);
+      const data = await listBills(shopId, filter);
       if (!cancelled) {
         const sorted = [...data].sort(
           (a, b) => Number(b.createdAt) - Number(a.createdAt),
@@ -1291,7 +1292,7 @@ export function HistoryPage() {
     return () => {
       cancelled = true;
     };
-  }, [listBills, quickFilter, fromDate, toDate]);
+  }, [listBills, shopId, quickFilter, fromDate, toDate]);
 
   useEffect(() => {
     void fetchBills();

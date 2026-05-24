@@ -575,6 +575,7 @@ type CreateBillInput =
    items: vec BillItem;
    paymentType: PaymentType;
    priceType: PriceType;
+   shopId: text;
    staffCreatedBy: opt principal;
  };
 type ClothingFields = 
@@ -617,6 +618,7 @@ type BillFilter =
  record {
    fromDate: opt Timestamp;
    searchCustomer: opt text;
+   shopId: opt text;
    status: opt BillStatus;
    toDate: opt Timestamp;
  };
@@ -637,6 +639,7 @@ type Bill =
    priceType: PriceType;
    profit: float64;
    shareToken: opt text;
+   shopId: text;
    staffCreatedBy: opt principal;
    status: BillStatus;
    subtotal: float64;
@@ -708,7 +711,7 @@ service : {
    (CustomerCredit);
   approveReturn: (shopId: text, returnBillId: ReturnBillId) -> (ReturnBill);
   cancelBill: (id: BillId) -> (bool);
-  createBill: (input: CreateBillInput) -> (Bill);
+  createBill: (shopId: text, input: CreateBillInput) -> (Bill);
   createOrUpdateCustomer: (shopId: text, name: text, phone: text) ->
    (CustomerId);
   createProduct: (input: CreateProductInput) -> (ProductView);
@@ -760,14 +763,14 @@ service : {
    (opt ProductView) query;
   getPublicBill: (billId: BillId, shareToken: text) ->
    (opt PublicBillView) query;
-  getReturnsByBill: (shopId: text, billId: BillId) -> (vec ReturnBill) query;
-  getSalesSummary: (period: AnalyticsPeriod) -> (SalesSummary) query;
+  getReturnsByBill: (shopId: text, billId: BillId) -> (vec ReturnBill);
+  getSalesSummary: (shopId: text, period: AnalyticsPeriod) -> (SalesSummary);
   getShopConfig: () -> (opt ShopConfig) query;
   getShopCustomers: (shopId: text) -> (vec CustomerView) query;
   getShopStaff: (shopId: text) -> (vec StaffMember);
   getSupplier: (supplierId: SupplierId) -> (opt Supplier) query;
-  getTopProducts: (period: AnalyticsPeriod, limit: nat) ->
-   (vec TopProduct) query;
+  getTopProducts: (shopId: text, period: AnalyticsPeriod, limit: nat) ->
+   (vec TopProduct);
   getUserDetails: ("principal": text) -> (variant {
                                             err: text;
                                             ok: UserView;
@@ -775,7 +778,7 @@ service : {
   initAdmin: () -> (bool);
   isAdminCaller: () -> (bool) query;
   isSetupComplete: () -> (bool) query;
-  listBills: (filter: BillFilter) -> (vec Bill) query;
+  listBills: (shopId: text, filter: BillFilter) -> (vec Bill);
   listProducts: (filter: ProductFilter) -> (vec ProductView) query;
   listPurchasesByProduct: (shopId: text, productId: nat) ->
    (vec SupplierPurchase) query;

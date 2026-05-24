@@ -2403,7 +2403,7 @@ export function SettingsPage() {
         {/* ── App Version ── */}
         <div className="mt-12 text-center space-y-1 pb-4">
           <p className="text-xs text-muted-foreground/60">
-            Universal Shop Manager
+            Universal Shop System
           </p>
           <p className="text-xs text-muted-foreground/40">
             v1.0.0 · Built on Internet Computer

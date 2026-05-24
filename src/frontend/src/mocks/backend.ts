@@ -37,13 +37,13 @@ export const mockBackend: backendInterface = {
   saveShopConfig: async (config) => config,
   updateShopConfig: async (config) => config,
 
-  getSalesSummary: async (period) => ({
+  getSalesSummary: async (_shopId, period) => ({
     totalSales: 125000,
     totalProfit: 28500,
     billCount: BigInt(47),
   }),
 
-  getTopProducts: async (period, limit) => [
+  getTopProducts: async (_shopId, period, limit) => [
     { productId: BigInt(1), name: "iPhone 15 Pro 256GB Black", totalQty: 12, revenue: 180000, profit: 36000 },
     { productId: BigInt(2), name: "Samsung S24 128GB White", totalQty: 8, revenue: 96000, profit: 19200 },
     { productId: BigInt(3), name: "OnePlus 12 256GB Green", totalQty: 15, revenue: 90000, profit: 18000 },
@@ -173,10 +173,11 @@ export const mockBackend: backendInterface = {
 
   searchProducts: async (_shopId: string, _term: string) => [],
 
-  listBills: async (filter) => [
+  listBills: async (_shopId, filter) => [
     {
       id: BigInt(1),
       billNumber: BigInt(1001),
+      shopId: _shopId,
       customerName: "Rahul Sharma",
       customerPhone: "+91 9123456789",
       status: BillStatus.Saved,
@@ -200,6 +201,7 @@ export const mockBackend: backendInterface = {
     {
       id: BigInt(2),
       billNumber: BigInt(1002),
+      shopId: _shopId,
       customerName: "Priya Patel",
       customerPhone: "+91 9876543210",
       status: BillStatus.Saved,
@@ -225,6 +227,7 @@ export const mockBackend: backendInterface = {
   getBill: async (id) => ({
     id,
     billNumber: BigInt(1001),
+    shopId: "",
     customerName: "Rahul Sharma",
     customerPhone: "+91 9123456789",
     status: BillStatus.Saved,
@@ -246,9 +249,10 @@ export const mockBackend: backendInterface = {
     createdAt: BigInt(Date.now() * 1000000),
   }),
 
-  createBill: async (input) => ({
+  createBill: async (_shopId, input) => ({
     id: BigInt(100),
     billNumber: BigInt(1099),
+    shopId: _shopId,
     customerName: input.customerName,
     customerPhone: input.customerPhone,
     status: BillStatus.Saved,
@@ -328,6 +332,7 @@ export const mockBackend: backendInterface = {
   recordPayment: async (_shopId, _billId, _amount) => ({
     id: BigInt(1),
     billNumber: BigInt(1001),
+    shopId: _shopId,
     customerName: "Test",
     customerPhone: "",
     status: BillStatus.Saved,

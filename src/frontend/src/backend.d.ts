@@ -40,6 +40,7 @@ export interface CreateReturnInput {
 }
 export interface BillFilter {
     status?: BillStatus;
+    shopId?: string;
     searchCustomer?: string;
     toDate?: Timestamp;
     fromDate?: Timestamp;
@@ -75,6 +76,7 @@ export interface FruitsVegetablesFields {
 }
 export interface CreateBillInput {
     customerName: string;
+    shopId: string;
     customerPhone: string;
     amountPaid: number;
     billDiscount: number;
@@ -178,6 +180,7 @@ export interface Bill {
     id: BillId;
     customerName: string;
     status: BillStatus;
+    shopId: string;
     customerPhone: string;
     createdAt: Timestamp;
     shareToken?: string;
@@ -690,7 +693,7 @@ export interface backendInterface {
     applyStoreCredit(shopId: string, input: ApplyStoreCreditInput): Promise<CustomerCredit>;
     approveReturn(shopId: string, returnBillId: ReturnBillId): Promise<ReturnBill>;
     cancelBill(id: BillId): Promise<boolean>;
-    createBill(input: CreateBillInput): Promise<Bill>;
+    createBill(shopId: string, input: CreateBillInput): Promise<Bill>;
     createOrUpdateCustomer(shopId: string, name: string, phone: string): Promise<CustomerId>;
     createProduct(input: CreateProductInput): Promise<ProductView>;
     createReturn(shopId: string, input: CreateReturnInput): Promise<ReturnBill>;
@@ -743,12 +746,12 @@ export interface backendInterface {
     getProductByBarcode(shopId: string, barcode: string): Promise<ProductView | null>;
     getPublicBill(billId: BillId, shareToken: string): Promise<PublicBillView | null>;
     getReturnsByBill(shopId: string, billId: BillId): Promise<Array<ReturnBill>>;
-    getSalesSummary(period: AnalyticsPeriod): Promise<SalesSummary>;
+    getSalesSummary(shopId: string, period: AnalyticsPeriod): Promise<SalesSummary>;
     getShopConfig(): Promise<ShopConfig | null>;
     getShopCustomers(shopId: string): Promise<Array<CustomerView>>;
     getShopStaff(shopId: string): Promise<Array<StaffMember>>;
     getSupplier(supplierId: SupplierId): Promise<Supplier | null>;
-    getTopProducts(period: AnalyticsPeriod, limit: bigint): Promise<Array<TopProduct>>;
+    getTopProducts(shopId: string, period: AnalyticsPeriod, limit: bigint): Promise<Array<TopProduct>>;
     getUserDetails(principal: string): Promise<{
         __kind__: "ok";
         ok: UserView;
@@ -759,7 +762,7 @@ export interface backendInterface {
     initAdmin(): Promise<boolean>;
     isAdminCaller(): Promise<boolean>;
     isSetupComplete(): Promise<boolean>;
-    listBills(filter: BillFilter): Promise<Array<Bill>>;
+    listBills(shopId: string, filter: BillFilter): Promise<Array<Bill>>;
     listProducts(filter: ProductFilter): Promise<Array<ProductView>>;
     listPurchasesByProduct(shopId: string, productId: bigint): Promise<Array<SupplierPurchase>>;
     listPurchasesBySupplier(shopId: string, supplierId: SupplierId): Promise<Array<SupplierPurchase>>;

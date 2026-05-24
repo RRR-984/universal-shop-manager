@@ -436,11 +436,27 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { reset } = useStore();
 
   // ── Super Admin — belt-and-suspenders: context OR localStorage ───────────
-  // Shows immediately from localStorage even before backend check completes.
-  // This eliminates the 20+ version bug where the link hid during isChecking.
+  // localAdminFlag uses useState initializer so it's set synchronously on
+  // first render and is reactive to future updates via the effect below.
+  // This eliminates the flash-of-hidden that caused the 20+ version bug.
   const { isSuperAdmin } = useSuperAdmin();
-  const showAdminLink =
-    isSuperAdmin || localStorage.getItem("usm-super-admin-v1") === "1";
+  const [localAdminFlag, setLocalAdminFlag] = useState<boolean>(
+    () => localStorage.getItem("usm-super-admin-v1") === "1",
+  );
+
+  // Keep localAdminFlag in sync when localStorage is written by the context
+  useEffect(() => {
+    const stored = localStorage.getItem("usm-super-admin-v1") === "1";
+    if (stored !== localAdminFlag) {
+      setLocalAdminFlag(stored);
+    }
+    // Re-check whenever isSuperAdmin changes (backend confirmed result)
+    if (isSuperAdmin && !localAdminFlag) {
+      setLocalAdminFlag(true);
+    }
+  }, [isSuperAdmin, localAdminFlag]);
+
+  const showAdminLink = isSuperAdmin || localAdminFlag;
 
   // Close mobile shop selector on outside click
   useEffect(() => {
@@ -624,7 +640,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           {!collapsed ? (
             <div className="text-center space-y-0.5">
               <p className="text-[10px] text-muted-foreground/60 leading-tight">
-                © {new Date().getFullYear()} Universal Shop Manager
+                © {new Date().getFullYear()} Universal Shop System
               </p>
               <span className="text-[10px] text-muted-foreground/40 leading-tight block">
                 FIFO BRIDGE
@@ -721,7 +737,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <Icon className="w-5 h-5 flex-shrink-0" />
                 <span>
                   {item.id === "admin"
-                    ? "Admin Panel"
+                    ? "Super Admin"
                     : item.id === "customers"
                       ? "Customers"
                       : t(item.label as Parameters<typeof t>[0])}

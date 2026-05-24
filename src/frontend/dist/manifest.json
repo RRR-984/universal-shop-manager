@@ -1,7 +1,7 @@
 {
-  "name": "Universal Shop Manager",
+  "name": "Universal Shop System",
   "short_name": "ShopManager",
-  "description": "Universal Shop Management & Billing System — POS, Inventory, Billing for every shop in every country",
+  "description": "Universal Shop System — POS, Inventory, Billing for every shop in every country",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",

@@ -930,11 +930,11 @@ export function SetupPage() {
       localStorage.getItem(`usm-reg-${principal}`) === "true" ||
       localStorage.getItem("usm-setup-done") === "true"
     ) {
-      // Already registered — hard reload to root which routes to /dashboard
-      console.log("[Auth] Already registered, redirecting to dashboard");
-      window.location.replace("/");
+      // Already registered — use React Router navigate (NO hard reload)
+      console.log("[Auth] Already registered, navigating to dashboard");
+      void navigate({ to: "/dashboard" });
     }
-  }, [identity, isAddMode, loginStatus]);
+  }, [identity, isAddMode, loginStatus, navigate]);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const updateConfig = (patch: Partial<ShopConfig>) =>
@@ -1021,12 +1021,14 @@ export function SetupPage() {
       console.warn("[SetupWizard] Backend save failed (continuing):", err);
     }
 
-    // ── STEP 4: Hard reload to root — eliminates ALL React state race conditions
-    // On reload, App.tsx reads localStorage FIRST (synchronously), sees
-    // usm-setup-done=true, II restores its session from sessionStorage/IndexedDB
-    // natively, and routes straight to /dashboard. No React navigate() races.
-    console.log("[SetupWizard] Navigating to dashboard via hard reload");
-    window.location.replace("/");
+    // ── STEP 4: Navigate to dashboard ────────────────────────────────────────
+    // localStorage + Zustand are already committed in steps 1 & 2.
+    // Set the fresh-setup nav flag so RootLayout skips the loading spinner
+    // (which would otherwise block the Outlet and cause the login-loop).
+    localStorage.setItem("usm-setup-complete-nav", "1");
+    console.log("[SetupWizard] Navigating to dashboard");
+    setIsSaving(false);
+    void navigate({ to: "/dashboard" });
   };
 
   // Focus search when entering step 0
@@ -1074,7 +1076,7 @@ export function SetupPage() {
         )}
         <div className="min-w-0">
           <h1 className="font-display text-base font-bold text-foreground leading-tight">
-            {isAddMode ? "Add New Shop" : "Universal Shop Manager"}
+            {isAddMode ? "Add New Shop" : "Universal Shop System"}
           </h1>
           <p className="text-xs text-muted-foreground">
             {isAddMode

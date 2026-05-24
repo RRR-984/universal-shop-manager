@@ -2,7 +2,7 @@
 
 ## Direction
 
-Universal Shop Manager — global POS and inventory system for shopkeepers in all countries. Clean, utilitarian interface that works on mobile, tablet, and desktop.
+Universal Shop System — global POS and inventory system for shopkeepers in all countries. Clean, utilitarian interface that works on mobile, tablet, and desktop.
 
 ## Tone
 
