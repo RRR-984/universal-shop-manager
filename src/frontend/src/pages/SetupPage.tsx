@@ -914,24 +914,20 @@ export function SetupPage() {
   const { setShopConfig, setIsSetupComplete, addShop } = useStore();
 
   useEffect(() => {
-    console.log("[Auth] SetupPage registration guard:", {
-      loginStatus,
-      principalText: identity?.getPrincipal().toText(),
-      isRegistered: identity
-        ? localStorage.getItem(`usm-reg-${identity.getPrincipal().toText()}`)
-        : null,
-      usmSetupDone: localStorage.getItem("usm-setup-done"),
-    });
     if (loginStatus === "initializing") return; // Wait for II to resolve
     if (isAddMode) return; // "Add shop" mode always shows the wizard
+    // Check usm-is-registered FIRST (synchronous, always reliable)
+    if (localStorage.getItem("usm-is-registered") === "true") {
+      void navigate({ to: "/dashboard" });
+      return;
+    }
     if (!identity) return; // Not logged in yet — wait
     const principal = identity.getPrincipal().toText();
     if (
       localStorage.getItem(`usm-reg-${principal}`) === "true" ||
       localStorage.getItem("usm-setup-done") === "true"
     ) {
-      // Already registered — use React Router navigate (NO hard reload)
-      console.log("[Auth] Already registered, navigating to dashboard");
+      // Already registered — navigate to dashboard
       void navigate({ to: "/dashboard" });
     }
   }, [identity, isAddMode, loginStatus, navigate]);
@@ -984,51 +980,37 @@ export function SetupPage() {
       return;
     }
 
-    console.log("[SetupWizard] handleFinish called");
     setIsSaving(true);
 
-    // ── STEP 1: Write localStorage markers SYNCHRONOUSLY before anything else ──
-    // These are permanent — must NEVER be deleted (not even on logout).
+    // ── STEP 1: Write THREE localStorage markers SYNCHRONOUSLY (before everything else) ──
+    // These are the single source of truth. Written first so they survive any crash.
     const principalText = identity?.getPrincipal().toText();
     if (principalText) {
       localStorage.setItem(`usm-reg-${principalText}`, "true");
     }
     localStorage.setItem("usm-setup-done", "true");
-
-    console.log("[SetupWizard] localStorage markers written:", {
-      "usm-reg": principalText
-        ? localStorage.getItem(`usm-reg-${principalText}`)
-        : null,
-      "usm-setup-done": localStorage.getItem("usm-setup-done"),
-    });
+    localStorage.setItem("usm-is-registered", "true");
+    // Navigation flag: App.tsx reads this on mount and hard-redirects to /dashboard.
+    // This avoids ALL React Router/state race conditions.
+    localStorage.setItem("usm-nav-to-dashboard", "true");
 
     // ── STEP 2: Update Zustand store synchronously ────────────────────────────
     setShopConfig(finalConfig);
     setIsSetupComplete(true);
-    console.log("[SetupWizard] Zustand state updated");
 
-    // ── STEP 3: Await backend save with 15s timeout ───────────────────────────
-    // If it times out, we continue anyway — localStorage is already committed.
-    try {
-      const savePromise = saveShopConfig(finalConfig);
-      const timeoutPromise = new Promise<void>((resolve) =>
-        setTimeout(resolve, 15000),
-      );
-      await Promise.race([savePromise, timeoutPromise]);
-      console.log("[SetupWizard] Backend save complete");
-    } catch (err) {
-      // Non-fatal — localStorage + Zustand already committed
-      console.warn("[SetupWizard] Backend save failed (continuing):", err);
-    }
+    // ── STEP 3: Fire backend save in background — do NOT await ────────────────
+    // localStorage + Zustand are already committed. Navigation happens immediately.
+    void saveShopConfig(finalConfig).catch(() => {
+      // Non-fatal — localStorage is already committed
+    });
 
-    // ── STEP 4: Navigate to dashboard ────────────────────────────────────────
-    // localStorage + Zustand are already committed in steps 1 & 2.
-    // Set the fresh-setup nav flag so RootLayout skips the loading spinner
-    // (which would otherwise block the Outlet and cause the login-loop).
-    localStorage.setItem("usm-setup-complete-nav", "1");
-    console.log("[SetupWizard] Navigating to dashboard");
-    setIsSaving(false);
-    void navigate({ to: "/dashboard" });
+    // ── STEP 4: Hard redirect to /dashboard ──────────────────────────────────
+    // Use window.location.href (NOT React Router navigate) to get a clean page
+    // reload. App.tsx reads usm-nav-to-dashboard on mount and redirects again
+    // synchronously, but having it here too ensures the redirect always fires.
+    // The hard reload means React re-mounts with all localStorage flags already set,
+    // eliminating every race condition.
+    window.location.href = "/dashboard";
   };
 
   // Focus search when entering step 0

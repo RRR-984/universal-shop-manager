@@ -330,6 +330,7 @@ module {
 
   public type UpdateProductInput = {
     id             : ProductId;
+    shopId         : Text;      // shop identifier — required for ownership validation
     name           : Text;
     category       : Text;
     unit           : Text;

@@ -153,8 +153,9 @@ export function BillShareCard({ bill, shopConfig, isReminder = false }: Props) {
   const fmt = (n: number) => formatCurrency(n, currency, useIndianFormat);
 
   const handleWhatsApp = () => {
-    if (!bill.customerPhone) return;
-    const phone = bill.customerPhone.replace(/\D/g, "");
+    // Use customer phone if available, fall back to shop phone for sharing
+    const phoneRaw = bill.customerPhone || shopConfig?.shopPhone || "";
+    const phone = phoneRaw.replace(/\D/g, "");
     const text = isReminder
       ? buildReminderWhatsAppText(
           bill,
@@ -162,10 +163,15 @@ export function BillShareCard({ bill, shopConfig, isReminder = false }: Props) {
           currency,
         )
       : buildWhatsAppBillText(bill, shopConfig);
-    window.open(
-      `https://wa.me/${phone}?text=${encodeURIComponent(text)}`,
-      "_blank",
-    );
+    if (phone) {
+      window.open(
+        `https://wa.me/${phone}?text=${encodeURIComponent(text)}`,
+        "_blank",
+      );
+    } else {
+      // No phone at all — open WhatsApp with just the text
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+    }
   };
 
   const handlePdfDownload = () => {
@@ -205,7 +211,7 @@ export function BillShareCard({ bill, shopConfig, isReminder = false }: Props) {
       icon: <MessageCircle className="w-6 h-6" />,
       label: isReminder ? "Send Reminder" : "WhatsApp",
       onClick: handleWhatsApp,
-      disabled: !bill.customerPhone,
+      disabled: false,
       color: "text-emerald-600",
     },
     {
@@ -325,9 +331,10 @@ export function BillShareCard({ bill, shopConfig, isReminder = false }: Props) {
             </button>
           ))}
         </div>
-        {!bill.customerPhone && (
+        {!bill.customerPhone && !shopConfig?.shopPhone && (
           <p className="text-xs text-muted-foreground mt-2">
-            💡 Add customer phone to enable WhatsApp sharing
+            💡 Add customer or shop phone in Settings for direct WhatsApp
+            sharing
           </p>
         )}
       </div>

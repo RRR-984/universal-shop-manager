@@ -5,6 +5,7 @@ import { useNavigate } from "@tanstack/react-router";
 import {
   AlertCircle,
   Bell,
+  CheckCircle2,
   ChevronDown,
   FileText,
   Info,
@@ -16,6 +17,8 @@ import {
   Store,
   TrendingDown,
   TrendingUp,
+  Trophy,
+  Zap,
 } from "lucide-react";
 import { useState as useStateLocal } from "react";
 import { useCallback, useEffect, useState } from "react";
@@ -51,7 +54,7 @@ type MetricCardProps = {
   value: string;
   sublabel?: string;
   icon: React.ReactNode;
-  accent: "blue" | "green" | "neutral";
+  accent: "blue" | "green" | "neutral" | "purple" | "teal";
   tooltip?: string;
   ocid: string;
 };
@@ -69,16 +72,22 @@ function MetricCard({
     blue: "bg-primary/5 border-primary/20 text-primary",
     green: "bg-profit/10 border-profit/20 text-profit",
     neutral: "bg-card border-border text-muted-foreground",
+    purple: "bg-purple-50 border-purple-200 text-purple-700",
+    teal: "bg-teal-50 border-teal-200 text-teal-700",
   };
   const valueMap = {
     blue: "text-primary",
     green: "text-profit",
     neutral: "text-foreground",
+    purple: "text-purple-700",
+    teal: "text-teal-700",
   };
   const iconBg = {
     blue: "bg-primary/10 text-primary",
     green: "bg-profit/10 text-profit",
     neutral: "bg-muted text-muted-foreground",
+    purple: "bg-purple-100 text-purple-600",
+    teal: "bg-teal-100 text-teal-600",
   };
 
   return (
@@ -313,6 +322,9 @@ export function DashboardPage() {
   const {
     getSalesSummary,
     getTopProducts,
+    getStockValue,
+    getFastMovingProducts,
+    getSlowMovingProducts,
     getLowStockProducts,
     getNearExpiryProducts,
     getNearExpiryProductsByDays,
@@ -337,6 +349,11 @@ export function DashboardPage() {
   const [pendingBills, setPendingBills] = useState<Bill[]>([]);
   const [pendingLoading, setPendingLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [stockValue, setStockValue] = useState<number>(0);
+  const [stockValueLoading, setStockValueLoading] = useState(true);
+  const [fastMoving, setFastMoving] = useState<TopProduct[]>([]);
+  const [slowMoving, setSlowMoving] = useState<TopProduct[]>([]);
+  const [movingLoading, setMovingLoading] = useState(true);
   const [alertsLoading, setAlertsLoading] = useState(true);
   const [activeAlertTab, setActiveAlertTab] = useState<
     "expiry" | "lowstock" | "dead" | "pending"
@@ -358,16 +375,104 @@ export function DashboardPage() {
 
   // Active shop ID — used for all shop-scoped API calls
   const activeShopId = useStore((s) => s.activeShopId);
-  const shopId = activeShopId ?? shopConfig?.shopName ?? "";
+
+  // Resolve shopId — returns null (not empty string '') when no ID found.
+  // An empty string would cause the backend to return ALL shops' data (cross-shop leak).
+  const shopId: string | null = (() => {
+    if (activeShopId) return activeShopId;
+    // Direct localStorage keys
+    const keys = ["activeShopId", "currentShopId", "shopId", "selectedShopId"];
+    for (const k of keys) {
+      const v = localStorage.getItem(k);
+      if (v?.trim()) return v.trim();
+    }
+    // Zustand persist store keys
+    for (const storeKey of [
+      "usm-store",
+      "shop-storage",
+      "universal-shop-storage",
+      "shop-store",
+    ]) {
+      try {
+        const raw = localStorage.getItem(storeKey);
+        if (raw) {
+          const parsed = JSON.parse(raw) as {
+            state?: { activeShopId?: string };
+          };
+          if (parsed?.state?.activeShopId) return parsed.state.activeShopId;
+        }
+      } catch {
+        /* ignore parse errors */
+      }
+    }
+    // Return null — do NOT fall back to shopName or empty string.
+    // Callers must check for null before making API calls.
+    return null;
+  })();
+
+  // Load stock value (always current, not period-dependent)
+  useEffect(() => {
+    if (!ready || !shopId) {
+      setStockValueLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setStockValueLoading(true);
+    getStockValue(shopId)
+      .then((v) => {
+        if (!cancelled) setStockValue(v);
+      })
+      .catch(() => {
+        /* silent */
+      })
+      .finally(() => {
+        if (!cancelled) setStockValueLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, shopId, getStockValue]);
+
+  // Load fast/slow moving products (period-dependent)
+  useEffect(() => {
+    if (!ready || !shopId) {
+      setMovingLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setMovingLoading(true);
+    Promise.all([
+      getFastMovingProducts(shopId, 5n),
+      getSlowMovingProducts(shopId, 5n),
+    ])
+      .then(([fast, slow]) => {
+        if (cancelled) return;
+        setFastMoving(fast);
+        setSlowMoving(slow);
+      })
+      .catch(() => {
+        /* silent */
+      })
+      .finally(() => {
+        if (!cancelled) setMovingLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, shopId, getFastMovingProducts, getSlowMovingProducts]);
 
   // Load period-dependent data
   useEffect(() => {
     if (!ready) return;
+    if (!shopId) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     const timeout = setTimeout(() => {
       if (!cancelled) setLoading(false);
-    }, 5000);
+    }, 10000);
     Promise.all([
       getSalesSummary(shopId, period),
       getTopProducts(shopId, period, 10n),
@@ -389,8 +494,13 @@ export function DashboardPage() {
 
   // Load alerts (not period-dependent) — scoped to active shop only
   useEffect(() => {
-    // Guard: skip if no active shop — avoids fetching cross-shop data
-    if (!ready || !shopId) return;
+    if (!ready) return;
+    // CRITICAL: Do NOT call API with null/empty shopId — would return ALL shops data.
+    // Instead, show a 'Select a shop' message which is handled in the render.
+    if (!shopId) {
+      setAlertsLoading(false);
+      return;
+    }
     let cancelled = false;
     setAlertsLoading(true);
     const timeout = setTimeout(() => {
@@ -437,13 +547,13 @@ export function DashboardPage() {
 
   // Load pending payment bills
   const fetchPendingBills = useCallback(async () => {
-    if (!ready) return;
+    if (!ready || !shopId) return;
     setPendingLoading(true);
     try {
       const bills = await getPendingPaymentBills(shopId);
       setPendingBills(bills);
     } catch {
-      /* silent */
+      toast.error("Failed to load pending bills");
     } finally {
       setPendingLoading(false);
     }
@@ -579,18 +689,80 @@ export function DashboardPage() {
       ) : totalAlertCount === 0 ? (
         <div
           data-ocid="dashboard.alerts.empty_state"
-          className="flex items-center gap-3 px-4 py-3.5 bg-green-50 border border-green-200 rounded-xl"
+          className="rounded-xl border border-border bg-card overflow-hidden"
         >
-          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <span className="text-base">✅</span>
+          {/* Header */}
+          <div className="flex items-center gap-2 px-4 py-2.5 bg-muted/40 border-b border-border">
+            <Package className="w-4 h-4 text-primary" />
+            <span className="font-display font-semibold text-sm text-foreground">
+              Stock Summary
+            </span>
+            <Badge className="ml-auto text-[10px] bg-green-100 text-green-700 border border-green-200 hover:bg-green-100">
+              All Clear
+            </Badge>
           </div>
-          <div>
-            <p className="font-semibold text-green-700 text-sm">
-              All good! No alerts today.
-            </p>
-            <p className="text-xs text-green-600/80">
-              Stock, expiry, and dead stock are all clear.
-            </p>
+
+          {/* Summary rows */}
+          <div className="divide-y divide-border">
+            {/* Total products tracked */}
+            <div className="flex items-center gap-3 px-4 py-2.5">
+              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Package className="w-3.5 h-3.5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground">
+                  Products tracked
+                </p>
+                <p className="text-sm font-semibold text-foreground">
+                  {topProducts.length > 0
+                    ? `${topProducts.length}+ products in stock`
+                    : "Inventory up to date"}
+                </p>
+              </div>
+              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+            </div>
+
+            {/* Expiry status */}
+            <div className="flex items-center gap-3 px-4 py-2.5">
+              <div className="w-7 h-7 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground">Expiry alerts</p>
+                <p className="text-sm font-semibold text-green-700">
+                  No items expiring soon
+                </p>
+              </div>
+              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+            </div>
+
+            {/* Dead stock status */}
+            <div className="flex items-center gap-3 px-4 py-2.5">
+              <div className="w-7 h-7 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground">Dead stock</p>
+                <p className="text-sm font-semibold text-green-700">
+                  No slow-moving items
+                </p>
+              </div>
+              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+            </div>
+
+            {/* Low stock status */}
+            <div className="flex items-center gap-3 px-4 py-2.5">
+              <div className="w-7 h-7 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground">Low stock</p>
+                <p className="text-sm font-semibold text-green-700">
+                  Stock levels healthy
+                </p>
+              </div>
+              <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+            </div>
           </div>
         </div>
       ) : (
@@ -814,7 +986,7 @@ export function DashboardPage() {
                                 );
                                 const text = buildReminderWhatsAppText(
                                   bill,
-                                  shopId,
+                                  shopId ?? "",
                                   currency,
                                 );
                                 window.open(
@@ -822,7 +994,10 @@ export function DashboardPage() {
                                   "_blank",
                                 );
                                 try {
-                                  await recordReminderSent(shopId, bill.id);
+                                  await recordReminderSent(
+                                    shopId ?? "",
+                                    bill.id,
+                                  );
                                   void fetchPendingBills();
                                 } catch {
                                   /* silent */
@@ -839,7 +1014,7 @@ export function DashboardPage() {
                               <DashboardRecordPayment
                                 bill={bill}
                                 currency={currency}
-                                shopId={shopId}
+                                shopId={shopId ?? ""}
                                 recordPayment={recordPayment}
                                 onSuccess={fetchPendingBills}
                               />
@@ -1100,6 +1275,188 @@ export function DashboardPage() {
           </>
         )}
       </div>
+
+      {/* ── Total Stock Value (owner-only) ──────────────────────────────── */}
+      {isOwner && (
+        <div className="grid grid-cols-1 gap-3">
+          {stockValueLoading ? (
+            <MetricSkeleton />
+          ) : (
+            <MetricCard
+              ocid="dashboard.stock_value.card"
+              label="Total Stock Value"
+              value={formatCurrency(stockValue, currency)}
+              sublabel="Current inventory worth"
+              icon={<Package className="w-4.5 h-4.5" />}
+              accent="purple"
+              tooltip="Total value of all products currently in stock at cost price"
+            />
+          )}
+        </div>
+      )}
+
+      {/* ── Best Selling Product ────────────────────────────────────────── */}
+      {!loading && (
+        <div
+          data-ocid="dashboard.best_selling.section"
+          className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-4"
+        >
+          <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <Trophy className="w-5 h-5 text-amber-600" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium text-amber-600 uppercase tracking-wide mb-0.5">
+              Best Selling Product
+            </p>
+            {topProducts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No sales yet</p>
+            ) : (
+              <>
+                <p className="font-display font-bold text-foreground text-base truncate">
+                  {topProducts[0].name}
+                </p>
+                <div className="flex flex-wrap gap-3 mt-1">
+                  <span className="text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">
+                      {topProducts[0].totalQty % 1 === 0
+                        ? topProducts[0].totalQty.toFixed(0)
+                        : topProducts[0].totalQty.toFixed(2)}
+                    </span>{" "}
+                    units sold
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    Revenue:{" "}
+                    <span className="font-semibold text-primary">
+                      {formatCurrency(topProducts[0].revenue, currency)}
+                    </span>
+                  </span>
+                  {isOwner && topProducts[0].revenue > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      Margin:{" "}
+                      <span className="font-semibold text-profit">
+                        {(
+                          (topProducts[0].profit / topProducts[0].revenue) *
+                          100
+                        ).toFixed(1)}
+                        %
+                      </span>
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Fast & Slow Moving Products ─────────────────────────────────── */}
+      {!movingLoading && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* Fast Moving */}
+          <div
+            data-ocid="dashboard.fast_moving.section"
+            className="bg-card rounded-xl border border-border overflow-hidden"
+          >
+            <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border-b border-border">
+              <Zap className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <h3 className="font-display font-semibold text-sm text-foreground flex-1">
+                Fast Moving
+              </h3>
+              <Badge className="text-[10px] bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-100">
+                Top 5
+              </Badge>
+            </div>
+            {fastMoving.length === 0 ? (
+              <div
+                data-ocid="dashboard.fast_moving.empty_state"
+                className="px-4 py-5 text-sm text-muted-foreground text-center"
+              >
+                No data yet
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {fastMoving.map((p, i) => (
+                  <div
+                    key={String(p.productId)}
+                    data-ocid={`dashboard.fast_moving.item.${i + 1}`}
+                    className="flex items-center gap-3 px-4 py-2.5"
+                  >
+                    <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                      {i + 1}
+                    </span>
+                    <span className="flex-1 text-sm font-medium text-foreground truncate">
+                      {p.name}
+                    </span>
+                    <div className="text-right flex-shrink-0">
+                      <div className="flex items-center gap-1 justify-end">
+                        <TrendingUp className="w-3 h-3 text-emerald-500" />
+                        <span className="text-xs font-semibold text-emerald-600">
+                          {p.totalQty % 1 === 0
+                            ? p.totalQty.toFixed(0)
+                            : p.totalQty.toFixed(1)}{" "}
+                          sold
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Slow Moving */}
+          <div
+            data-ocid="dashboard.slow_moving.section"
+            className="bg-card rounded-xl border border-border overflow-hidden"
+          >
+            <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border-b border-border">
+              <TrendingDown className="w-4 h-4 text-orange-500 flex-shrink-0" />
+              <h3 className="font-display font-semibold text-sm text-foreground flex-1">
+                Slow Moving
+              </h3>
+              <Badge className="text-[10px] bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-100">
+                Watch list
+              </Badge>
+            </div>
+            {slowMoving.length === 0 ? (
+              <div
+                data-ocid="dashboard.slow_moving.empty_state"
+                className="px-4 py-5 text-sm text-emerald-600 font-medium text-center"
+              >
+                All products selling well!
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {slowMoving.map((p, i) => (
+                  <div
+                    key={String(p.productId)}
+                    data-ocid={`dashboard.slow_moving.item.${i + 1}`}
+                    className="flex items-center gap-3 px-4 py-2.5"
+                  >
+                    <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-700 text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                      {i + 1}
+                    </span>
+                    <span className="flex-1 text-sm font-medium text-foreground truncate">
+                      {p.name}
+                    </span>
+                    <div className="text-right flex-shrink-0">
+                      <div className="flex items-center gap-1 justify-end">
+                        <TrendingDown className="w-3 h-3 text-orange-400" />
+                        <span className="text-xs font-semibold text-orange-600">
+                          {p.totalQty % 1 === 0
+                            ? p.totalQty.toFixed(0)
+                            : p.totalQty.toFixed(1)}{" "}
+                          sold
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Empty state ────────────────────────────────────────────────── */}
       {!loading && summary && summary.billCount === 0n && (

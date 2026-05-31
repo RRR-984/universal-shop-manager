@@ -1,4 +1,4 @@
-// Version: 3.0.0
+// Version: 1.0.0
 type AdminNote__602743910 =
   {
     content : Text;
@@ -252,37 +252,6 @@ type Nat__920180692 = Nat;
 type Node__46230540<K, V> =
   {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
 type NumberFormat__189214880 = {#Indian; #International};
-type OldBillState__54252787 =
-  {
-    bills : List__415060402<OldBill__814045144>;
-    var nextBillNumber : Nat;
-    var nextId : Nat
-  };
-type OldBill__814045144 =
-  {
-    amountPaid : Float;
-    amountPending : Float;
-    billNumber : Nat;
-    createdAt : Timestamp__301639476;
-    customerName : Text;
-    customerPhone : Text;
-    extraCharges : [ExtraCharge__443552616];
-    grandTotal : Float;
-    id : BillId__994444545;
-    items : [BillItem__719530568];
-    lastReminderSent : ?Timestamp__301639476;
-    paymentType : PaymentType__668863806;
-    priceType : PriceType__791559107;
-    profit : Float;
-    shareToken : ?Text;
-    staffCreatedBy : ?Principal;
-    status : BillStatus__488604250;
-    subtotal : Float;
-    taxBreakdown : TaxBreakdown__935917889;
-    taxRate : Float;
-    taxSystem : TaxSystem__952149175;
-    totalDiscount : Float
-  };
 type PackType__1058895741 = {#Bottle; #Other; #Strip; #Tablet};
 type PaymentType__668863806 = {#full; #partial};
 type PriceType__791559107 = {#Custom; #Retail; #Wholesale};
@@ -444,50 +413,7 @@ type UserRecord__412821149 =
     shopName : Text;
     shopType : Text
   };
-actor ({
-  stable adminState :
-    {
-      var adminPrincipal : ?Text;
-      globalShops : Map__605269027<Text, ShopConfig__128074734>;
-      var nextNoteId : Nat;
-      notes : List__415060402<AdminNote__602743910>;
-      shopDisabled : Map__605269027<Text, Bool>;
-      users : Map__605269027<Text, UserRecord__412821149>
-    };
-  in billState : OldBillState__54252787;
-  stable productState :
-    {var nextId : Nat; products : List__415060402<Product__110260450>};
-  stable ratesState :
-    {
-      var available : Bool;
-      var gold24k : Float;
-      var lastUpdated : Int;
-      var silver : Float
-    };
-  stable returnState :
-    {
-      credits : Map__605269027<Text, CustomerCredit__625537921>;
-      returns :
-        Map__605269027<ReturnBillId__311506537, ReturnBill__685023167>;
-      state : {var nextReturnId : Nat; var nextTxId : Nat}
-    };
-  stable rolesState :
-    {
-      customers : Map__605269027<Text, List__415060402<Customer__778013411>>;
-      nextCustomerId : Map__605269027<Text, Nat>;
-      shopOwners : Map__605269027<Text, Principal>;
-      shopStaff :
-        Map__605269027<Text, List__415060402<StaffMember__584203798>>
-    };
-  stable settingsState : {var config : ?ShopConfig__128074734};
-  stable supplierState :
-    {
-      var nextPurchId : Nat;
-      var nextSuppId : Nat;
-      supplierPurchases : List__415060402<SupplierPurchase__125675658>;
-      suppliers : List__415060402<Supplier__936068473>
-    }
-}, {
+actor {
   stable adminState :
     {
       var adminPrincipal : ?Text;
@@ -535,4 +461,4 @@ actor ({
       supplierPurchases : List__415060402<SupplierPurchase__125675658>;
       suppliers : List__415060402<Supplier__936068473>
     }
-});
+};

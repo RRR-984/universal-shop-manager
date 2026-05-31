@@ -31,6 +31,9 @@ const ProductsPage = lazy(() =>
 const BulkEntryPage = lazy(() =>
   import("./pages/BulkEntryPage").then((m) => ({ default: m.BulkEntryPage })),
 );
+const BulkSellPage = lazy(() =>
+  import("./pages/BulkSellPage").then((m) => ({ default: m.BulkSellPage })),
+);
 const BillingPage = lazy(() =>
   import("./pages/BillingPage").then((m) => ({ default: m.BillingPage })),
 );
@@ -61,6 +64,7 @@ function RootLayout() {
     getShopConfig,
     isSetupComplete: checkSetupComplete,
     recordUserLogin,
+    checkIfBlocked,
     initAdmin,
     getMyRole,
     ready,
@@ -93,21 +97,26 @@ function RootLayout() {
   const [authChecking, setAuthChecking] = useState(
     loginStatus === "initializing",
   );
+  const [isUserBlocked, setIsUserBlocked] = useState(false);
 
-  // FIX: track whether we just came from a fresh setup (no loading spinner needed)
-  // When usm-setup-complete-nav is set, setup just finished — skip isLoading spinner.
-  const justCompletedSetup =
-    localStorage.getItem("usm-setup-complete-nav") === "1";
+  // FIX: Handle the usm-nav-to-dashboard flag set by SetupPage.
+  // This flag is written synchronously before navigate, so it's always
+  // present when App first mounts after setup. Remove it immediately and
+  // redirect to avoid any auth-state race condition.
+  useEffect(() => {
+    if (localStorage.getItem("usm-nav-to-dashboard") === "true") {
+      localStorage.removeItem("usm-nav-to-dashboard");
+      window.location.replace("/dashboard");
+    }
+  }, []);
 
-  // Safety timeout — if II never resolves, unblock routing after 5s
+  // Safety timeout — if II never resolves, unblock routing after 30s.
+  // Do NOT show the setup wizard on timeout — only unblock the spinner.
   useEffect(() => {
     if (loginStatus !== "initializing") return;
     const timer = setTimeout(() => {
-      console.log(
-        "[Auth] Safety timeout fired — II still initializing after 5s, forcing authChecking=false",
-      );
       setAuthChecking(false);
-    }, 5000);
+    }, 30000);
     return () => clearTimeout(timer);
   }, [loginStatus]);
 
@@ -117,9 +126,6 @@ function RootLayout() {
     const timer = setTimeout(() => {
       const currentIsLoading = useStore.getState().isLoading;
       if (currentIsLoading) {
-        console.log(
-          "[Auth] isLoading safety timeout fired — backend init hung after 8s, forcing isLoading=false",
-        );
         setIsLoading(false);
       }
     }, 8000);
@@ -127,28 +133,10 @@ function RootLayout() {
   }, [setIsLoading]);
 
   useEffect(() => {
-    console.log("[Auth] loginStatus changed:", loginStatus);
-    console.log(
-      "[Auth] identity:",
-      identity ? identity.getPrincipal().toText() : "null",
-    );
     if (loginStatus !== "initializing") {
       setAuthChecking(false);
-      console.log("[Auth] authChecking: false (loginStatus resolved)");
     }
-  }, [loginStatus, identity]);
-
-  // Debug log
-  console.log("[Auth] RootLayout state:", {
-    loginStatus,
-    isAuthenticated: !!identity,
-    principalText,
-    isRegisteredLocally,
-    isSetupComplete,
-    setupAlreadyDone,
-    authChecking,
-    justCompletedSetup,
-  });
+  }, [loginStatus]);
 
   // ── Background sync: load backend config for freshness ───────────────────
   useEffect(() => {
@@ -163,6 +151,13 @@ function RootLayout() {
           syncActiveShopFromBackend(config);
           setLanguage(config.language);
           void recordUserLogin(config.shopName, config.shopType);
+          // Check if user has been blocked by admin
+          const blocked = await checkIfBlocked();
+          if (blocked) {
+            setIsUserBlocked(true);
+            setIsLoading(false);
+            return;
+          }
           try {
             const role = await getMyRole(config.shopName);
             setUserRole(role);
@@ -197,12 +192,67 @@ function RootLayout() {
     setIsSetupComplete,
     setIsLoading,
     setUserRole,
+    checkIfBlocked,
   ]);
+
+  // Blocked user screen — shown before any routing
+  if (isUserBlocked) {
+    return (
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "#fff",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 9999,
+          padding: "2rem",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>⛔</div>
+        <h2
+          style={{
+            color: "#dc2626",
+            fontWeight: "bold",
+            marginBottom: "0.5rem",
+          }}
+        >
+          Account Blocked
+        </h2>
+        <p style={{ marginBottom: "0.5rem", fontSize: "1.1rem" }}>
+          Aapka account block kar diya gaya hai.
+        </p>
+        <p style={{ color: "#6b7280", marginBottom: "1.5rem" }}>
+          Your account has been blocked. Please contact support.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            localStorage.clear();
+            window.location.replace("/");
+          }}
+          style={{
+            background: "#dc2626",
+            color: "white",
+            padding: "0.75rem 1.5rem",
+            borderRadius: "8px",
+            border: "none",
+            cursor: "pointer",
+            fontSize: "1rem",
+          }}
+        >
+          Logout
+        </button>
+      </div>
+    );
+  }
 
   // While II is still initialising, show full-screen loading spinner.
   // NEVER redirect to login or show SetupPage during auth loading.
   if (authChecking) {
-    console.log("[Route] Decision: showing loading because authChecking=true");
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
@@ -218,15 +268,8 @@ function RootLayout() {
   // localStorage is synchronous — if the marker is there, the user HAS
   // completed setup. Don't let async identity=null override this fact.
   if (setupAlreadyDone) {
-    console.log(
-      "[Route] Decision: showing dashboard/outlet because setupAlreadyDone=true",
-    );
-
     // Show loading spinner for RETURNING users on cold boot only.
-    // If justCompletedSetup=true, skip the spinner — setup just finished
-    // and the user is being navigated in; showing a spinner here causes
-    // the login-loop (spinner → identity not yet confirmed → redirect to setup).
-    if (isLoading && !justCompletedSetup) {
+    if (isLoading) {
       return (
         <div className="min-h-screen flex items-center justify-center bg-background">
           <div className="text-center">
@@ -252,7 +295,6 @@ function RootLayout() {
     authChecking === false;
 
   if (isLoggedOut) {
-    console.log("[Route] Decision: showing SetupPage because isLoggedOut=true");
     return (
       <Suspense fallback={<PageSpinner />}>
         <SetupPage />
@@ -262,9 +304,6 @@ function RootLayout() {
 
   // Authenticated but setup not done
   if (!setupAlreadyDone) {
-    console.log(
-      "[Route] Decision: showing SetupPage because !setupAlreadyDone",
-    );
     return (
       <Suspense fallback={<PageSpinner />}>
         <SetupPage />
@@ -367,6 +406,18 @@ const bulkEntryRoute = createRoute({
   ),
 });
 
+const bulkSellRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/bulk-sell",
+  component: () => (
+    <AppShell>
+      <Suspense fallback={<PageSpinner />}>
+        <BulkSellPage />
+      </Suspense>
+    </AppShell>
+  ),
+});
+
 const settingsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/settings",
@@ -389,6 +440,8 @@ const adminRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin",
   beforeLoad: () => {
+    const isAdmin = localStorage.getItem("usm-super-admin-v1") === "1";
+    if (!isAdmin) throw redirect({ to: "/dashboard" });
     const role = useStore.getState().userRole;
     if (role === "staff") {
       throw redirect({ to: "/dashboard" });
@@ -430,6 +483,7 @@ const routeTree = rootRoute.addChildren([
   dashboardRoute,
   productsRoute,
   bulkEntryRoute,
+  bulkSellRoute,
   billingRoute,
   historyRoute,
   settingsRoute,

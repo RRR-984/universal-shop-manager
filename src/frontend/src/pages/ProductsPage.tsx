@@ -451,7 +451,10 @@ function buildEngineFields(
       freshnessDate: form.fvFreshnessDate,
       batchNumber: form.fvBatchNumber,
     };
-    return { FruitsVegetables: f } as unknown as EngineFields;
+    return {
+      __kind__: "FruitsVegetables",
+      FruitsVegetables: f,
+    } as unknown as EngineFields;
   }
 
   // BuildingMaterial — dedicated backend variant with all 6 required fields
@@ -465,7 +468,10 @@ function buildEngineFields(
       color: form.bldColor,
       expiryDate: optExpiry(form.expiryDate),
     } as unknown as BuildingMaterialFields;
-    return { BuildingMaterial: f } as unknown as EngineFields;
+    return {
+      __kind__: "BuildingMaterial",
+      BuildingMaterial: f,
+    } as unknown as EngineFields;
   }
   switch (shopType) {
     case ShopType.Mobile: {
@@ -485,7 +491,7 @@ function buildEngineFields(
         serialNumber: form.mobileSerialNumber,
         expiryDate: optExpiry(form.expiryDate),
       } as unknown as MobileFields;
-      return { Mobile: f } as unknown as EngineFields;
+      return { __kind__: "Mobile", Mobile: f } as unknown as EngineFields;
     }
     case ShopType.Electronics: {
       const f = {
@@ -495,7 +501,10 @@ function buildEngineFields(
         warrantyMonths: BigInt(Number(form.elecWarranty) || 0),
         expiryDate: optExpiry(form.expiryDate),
       } as unknown as ElectronicsFields;
-      return { Electronics: f } as unknown as EngineFields;
+      return {
+        __kind__: "Electronics",
+        Electronics: f,
+      } as unknown as EngineFields;
     }
     case ShopType.Medical: {
       const f: MedicalFields = {
@@ -506,7 +515,7 @@ function buildEngineFields(
         packType: form.medPackType,
         isControlled: form.medControlled,
       };
-      return { Medical: f } as unknown as EngineFields;
+      return { __kind__: "Medical", Medical: f } as unknown as EngineFields;
     }
     case ShopType.Clothing: {
       const f = {
@@ -516,7 +525,7 @@ function buildEngineFields(
         color: form.clothColor,
         expiryDate: optExpiry(form.expiryDate),
       } as unknown as ClothingFields;
-      return { Clothing: f } as unknown as EngineFields;
+      return { __kind__: "Clothing", Clothing: f } as unknown as EngineFields;
     }
     case ShopType.Footwear: {
       const f = {
@@ -527,14 +536,14 @@ function buildEngineFields(
         color: form.footColor,
         expiryDate: optExpiry(form.expiryDate),
       } as unknown as FootwearFields;
-      return { Footwear: f } as unknown as EngineFields;
+      return { __kind__: "Footwear", Footwear: f } as unknown as EngineFields;
     }
     case ShopType.Grocery: {
       const f = {
         decimalQtyEnabled: form.grocDecimal,
         expiryDate: optExpiry(form.expiryDate),
       } as unknown as GroceryFields;
-      return { Grocery: f } as unknown as EngineFields;
+      return { __kind__: "Grocery", Grocery: f } as unknown as EngineFields;
     }
     case ShopType.Stationery: {
       const f = {
@@ -548,14 +557,20 @@ function buildEngineFields(
         penColor: form.statPenColor,
         expiryDate: optExpiry(form.expiryDate),
       } as unknown as StationeryFields;
-      return { Stationery: f } as unknown as EngineFields;
+      return {
+        __kind__: "Stationery",
+        Stationery: f,
+      } as unknown as EngineFields;
     }
     case ShopType.Restaurant: {
       const f = {
         category: form.restCategory,
         expiryDate: optExpiry(form.expiryDate),
       } as unknown as RestaurantFields;
-      return { Restaurant: f } as unknown as EngineFields;
+      return {
+        __kind__: "Restaurant",
+        Restaurant: f,
+      } as unknown as EngineFields;
     }
     case ShopType.AutoParts: {
       const f = {
@@ -565,14 +580,14 @@ function buildEngineFields(
         partNo: form.autoPartNo,
         expiryDate: optExpiry(form.expiryDate),
       } as unknown as AutoPartsFields;
-      return { AutoParts: f } as unknown as EngineFields;
+      return { __kind__: "AutoParts", AutoParts: f } as unknown as EngineFields;
     }
     case ShopType.Hardware: {
       const f = {
         sku: form.hwSku,
         expiryDate: optExpiry(form.expiryDate),
       } as unknown as HardwareFields;
-      return { Hardware: f } as unknown as EngineFields;
+      return { __kind__: "Hardware", Hardware: f } as unknown as EngineFields;
     }
     case ShopType.Jewelry: {
       const weightGrams = Number.parseFloat(form.jwWeightGrams) || 0;
@@ -589,7 +604,7 @@ function buildEngineFields(
         // expiryDate is optional string; use undefined (not null/empty) when absent
         expiryDate: form.expiryDate ? form.expiryDate : undefined,
       };
-      return { Jewelry: f } as unknown as EngineFields;
+      return { __kind__: "Jewelry", Jewelry: f } as unknown as EngineFields;
     }
     case ShopType.Salon: {
       const f = {
@@ -597,7 +612,7 @@ function buildEngineFields(
         staffName: form.salonStaff,
         expiryDate: optExpiry(form.expiryDate),
       } as unknown as SalonFields;
-      return { Salon: f } as unknown as EngineFields;
+      return { __kind__: "Salon", Salon: f } as unknown as EngineFields;
     }
     case ShopType.Electrical: {
       const ampValue =
@@ -630,7 +645,10 @@ function buildEngineFields(
         batchNumber: form.elecBatchNumber,
         expiryDate: form.expiryDate || undefined,
       };
-      return { Electrical: f } as unknown as EngineFields;
+      return {
+        __kind__: "Electrical",
+        Electrical: f,
+      } as unknown as EngineFields;
     }
     case ShopType.AgroProducts: {
       const f: AgroProductsFields = {
@@ -642,10 +660,14 @@ function buildEngineFields(
         expiryDate: form.expiryDate || undefined,
         batchNumber: form.agroBatchNumber || undefined,
       };
-      return { AgroProducts: f } as unknown as EngineFields;
+      return {
+        __kind__: "AgroProducts",
+        AgroProducts: f,
+      } as unknown as EngineFields;
     }
     default:
       return {
+        __kind__: "General",
         General: {
           expiryDate: optExpiry(form.expiryDate),
         } as unknown as GeneralFields,
@@ -4984,6 +5006,7 @@ function ProductModal({
   metalRates,
   shopId,
   suppliers,
+  products,
   onClose,
   onSave,
 }: {
@@ -4996,6 +5019,7 @@ function ProductModal({
   metalRates: MetalRates | null;
   shopId: string;
   suppliers: Supplier[];
+  products: ProductView[];
   onClose: () => void;
   onSave: (
     input: CreateProductInput | UpdateProductInput,
@@ -5207,6 +5231,17 @@ function ProductModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs = validateForm(shopType, form);
+    // Barcode uniqueness check during UPDATE — block submission if another product uses the same barcode
+    if (isEdit && editProduct && form.barcode.trim()) {
+      const barcodeConflict = products.find(
+        (p) =>
+          (p as ProductView & { barcode?: string }).barcode ===
+            form.barcode.trim() && p.id !== editProduct.id,
+      );
+      if (barcodeConflict) {
+        errs.barcode = "This barcode is already used by another product.";
+      }
+    }
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
       return;
@@ -5223,6 +5258,7 @@ function ProductModal({
       if (isEdit && editProduct) {
         const input: UpdateProductInput = {
           id: editProduct.id,
+          shopId: shopId,
           name: productName,
           category: form.category,
           unit: form.unit,
@@ -5269,7 +5305,8 @@ function ProductModal({
       }
     } catch (err) {
       console.error("Failed to save product:", err);
-      setErrors({ submit: "Failed to save product. Please try again." });
+      const errMsg = err instanceof Error ? err.message : String(err);
+      setErrors({ submit: `Failed to save product: ${errMsg}` });
     } finally {
       setLoading(false);
     }
@@ -5604,6 +5641,26 @@ function ProductModal({
                     ).toFixed(2)}
                   </span>
                 </div>
+                {/* Cost Per Unit — auto = totalCost / stock */}
+                <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-md px-3 py-2">
+                  <span className="text-sm font-medium text-foreground">
+                    Cost Per Unit (auto)
+                  </span>
+                  <span
+                    className="text-base font-bold text-primary/80"
+                    data-ocid="product.cost_per_unit.display"
+                  >
+                    {(() => {
+                      const totalCost =
+                        (Number(form.costPrice) || 0) +
+                        (Number(form.transportCost) || 0) +
+                        (Number(form.labourCost) || 0);
+                      const qty = Number(form.stock) || 0;
+                      if (qty <= 0 || totalCost <= 0) return "—";
+                      return `${currencySymbol}${(totalCost / qty).toFixed(2)}`;
+                    })()}
+                  </span>
+                </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {fieldRow({
@@ -5658,20 +5715,23 @@ function ProductModal({
               })}
             </div>
 
-            {/* Profit Preview */}
+            {/* Profit Preview — uses costPerUnit (totalCost / stock) as base */}
             {(() => {
               const totalCost =
                 (Number(form.costPrice) || 0) +
                 (Number(form.transportCost) || 0) +
                 (Number(form.labourCost) || 0);
+              const qty = Number(form.stock) || 0;
+              const costPerUnit =
+                qty > 0 && totalCost > 0 ? totalCost / qty : totalCost;
               const retail = Number(form.retailPrice) || 0;
-              if (!retail || totalCost <= 0) return null;
-              const margin = retail - totalCost;
-              const marginPct = (margin / totalCost) * 100;
+              if (!retail || costPerUnit <= 0) return null;
+              const margin = retail - costPerUnit;
+              const marginPct = (margin / retail) * 100;
               return (
                 <div className="flex gap-4 bg-green-50 border border-green-200 rounded-lg px-4 py-2.5 text-sm">
                   <div>
-                    <span className="text-muted-foreground">Margin: </span>
+                    <span className="text-muted-foreground">Margin/Unit: </span>
                     <span
                       className={`font-semibold ${margin >= 0 ? "text-green-700" : "text-red-600"}`}
                     >
@@ -6659,6 +6719,10 @@ export function ProductsPage() {
         );
       }
     }
+    if (!activeShopId) {
+      toast.error("Shop not loaded. Please wait.");
+      return;
+    }
     try {
       if (isEdit) {
         await api.updateProduct(input as UpdateProductInput);
@@ -6704,7 +6768,8 @@ export function ProductsPage() {
       void loadProducts();
     } catch (err) {
       console.error("handleSave error:", err);
-      toast.error("Failed to save product. Please try again.");
+      const errMsg = err instanceof Error ? err.message : String(err);
+      toast.error(`Failed to save product: ${errMsg}`);
       throw err;
     }
   };
@@ -6718,9 +6783,14 @@ export function ProductsPage() {
   };
 
   const handleQuickStock = async (product: ProductView, delta: number) => {
+    if (!activeShopId) {
+      toast.error("Shop not loaded. Please wait.");
+      return;
+    }
     const newStock = Math.max(0, product.stock + delta);
     const input: UpdateProductInput = {
       id: product.id,
+      shopId: activeShopId,
       name: product.name,
       category: product.category,
       unit: product.unit,
@@ -6743,10 +6813,15 @@ export function ProductsPage() {
     newStock: number,
     _note: string,
   ) => {
+    if (!activeShopId) {
+      toast.error("Shop not loaded. Please wait.");
+      return;
+    }
     const product = products.find((p) => p.id === id);
     if (!product) return;
     const input: UpdateProductInput = {
       id: product.id,
+      shopId: activeShopId,
       name: product.name,
       category: product.category,
       unit: product.unit,
@@ -6808,9 +6883,11 @@ export function ProductsPage() {
             <Button
               type="button"
               onClick={() => {
+                if (!activeShopId) return;
                 setEditProduct(null);
                 setShowModal(true);
               }}
+              disabled={!activeShopId}
               className="gap-2 shrink-0"
               data-ocid="product.add_button"
             >
@@ -7076,9 +7153,11 @@ export function ProductsPage() {
               <Button
                 type="button"
                 onClick={() => {
+                  if (!activeShopId) return;
                   setEditProduct(null);
                   setShowModal(true);
                 }}
+                disabled={!activeShopId}
                 data-ocid="product.empty_add_button"
                 className="gap-2"
               >
@@ -7172,14 +7251,15 @@ export function ProductsPage() {
       )}
 
       {/* Add/Edit Modal */}
-      {showModal && (
+      {showModal && activeShopId && (
         <ProductModal
           shopType={shopType}
           editProduct={editProduct}
           currency={currency}
           metalRates={metalRates}
-          shopId={activeShopId ?? shopConfig?.shopName ?? ""}
+          shopId={activeShopId}
           suppliers={suppliers}
+          products={products}
           onClose={() => {
             setShowModal(false);
             setEditProduct(null);
@@ -7194,6 +7274,11 @@ export function ProductsPage() {
           shopType={shopConfig.shopType as ShopType}
           onClose={() => setShowQuickMenu(false)}
           onProductsAdded={loadProducts}
+          products={products}
+          onUpdateProduct={async (input) => {
+            await api.updateProduct(input);
+            await loadProducts();
+          }}
         />
       )}
 

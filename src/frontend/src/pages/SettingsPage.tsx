@@ -787,14 +787,26 @@ function SuppliersSection({
   const loadSuppliers = useCallback(async () => {
     if (!shopId) return;
     setLoading(true);
-    try {
-      const data = await listSuppliersByShop(shopId);
-      setSuppliers(data);
-    } catch {
-      // silently handle
-    } finally {
-      setLoading(false);
+    let retries = 0;
+    while (retries < 3) {
+      try {
+        const data = await listSuppliersByShop(shopId);
+        setSuppliers(data);
+        setLoading(false);
+        return;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes("Actor not ready") && retries < 2) {
+          retries++;
+          await new Promise((res) => setTimeout(res, 1000));
+        } else {
+          toast.error("Failed to load suppliers. Please try again.");
+          setLoading(false);
+          return;
+        }
+      }
     }
+    setLoading(false);
   }, [shopId, listSuppliersByShop]);
 
   useEffect(() => {
@@ -864,7 +876,7 @@ function SuppliersSection({
           form.city.trim() || null,
           form.defaultTransportCharge.trim() || null,
         );
-        if (created) {
+        if (created !== null && created !== undefined) {
           toast.success("Supplier added");
           setDialogOpen(false);
           await loadSuppliers();
@@ -1697,7 +1709,7 @@ export function SettingsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="shopPhone" className="font-medium">
-                        Phone
+                        Shop Mobile Number
                       </Label>
                       <Input
                         id="shopPhone"
@@ -1709,6 +1721,9 @@ export function SettingsPage() {
                           setForm((p) => ({ ...p, shopPhone: e.target.value }))
                         }
                       />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Used for bill sharing and shop identification
+                      </p>
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="shopEmail" className="font-medium">

@@ -2,17 +2,11 @@
  * SuperAdminContext — Single source of truth for super admin status.
  *
  * Architecture:
- * - Module-level variable `adminResultCache` holds the result ONCE and never resets.
- * - The provider calls isAdminCaller() from the backend exactly once per session.
- * - After the result is cached, any subsequent Provider mount (caused by re-renders,
- *   route changes, or layout changes) immediately reads from the module cache — no
- *   additional backend calls, no race conditions.
- * - The result is never stored in localStorage — backend is the only source of truth.
- *
- * Why this fixes the 46-version bug:
- * - Old code: `const [isAdmin, setIsAdmin] = useState(...)` in AppLayout.tsx
- *   → React state resets on every component unmount/remount (layout changes, route changes)
- * - New code: module-level cache → survives all React re-renders, never resets
+ * - localStorage (usm-super-admin-v1) is the PRIMARY initial value — shown immediately on mount.
+ * - Module-level variable `adminResultCache` is set once per session after backend check.
+ * - The API call isAdminCaller() runs in the background to UPDATE localStorage and cache.
+ * - The link shows immediately on load if localStorage says admin=true — no flash-of-hidden.
+ * - resetSuperAdminCache() on logout clears BOTH the module cache AND localStorage.
  */
 
 import { useActor } from "@caffeineai/core-infrastructure";
@@ -31,6 +25,7 @@ import type { backendInterface } from "../backend.d";
 type SuperAdminState = {
   isSuperAdmin: boolean;
   isChecking: boolean;
+  isHydrated: boolean;
 };
 
 // Module-level cache — survives all React re-renders and route changes.
@@ -50,6 +45,7 @@ export function resetSuperAdminCache() {
 const SuperAdminContext = createContext<SuperAdminState>({
   isSuperAdmin: false,
   isChecking: true,
+  isHydrated: false,
 });
 
 // ── Persistent storage key (survives page reloads, deployments, IC cold starts) ──
@@ -80,14 +76,20 @@ export function SuperAdminProvider({ children }: { children: ReactNode }) {
 
   // IMMEDIATELY use stored value so link shows on mount without waiting for backend.
   // Backend check runs in background and updates state when done.
+  // isHydrated starts false — set to true only once the async backend check resolves
+  // (success OR error), preventing flickering when module cache is cleared by deployment.
   const [state, setState] = useState<SuperAdminState>(() => {
     // Priority 1: module-level cache (already checked this session)
     if (adminResultCache !== null) {
-      return { isSuperAdmin: adminResultCache, isChecking: false };
+      return {
+        isSuperAdmin: adminResultCache,
+        isChecking: false,
+        isHydrated: true,
+      };
     }
     // Priority 2: localStorage (survives page reloads and IC cold starts)
     const stored = readStoredAdminStatus();
-    return { isSuperAdmin: stored, isChecking: !stored };
+    return { isSuperAdmin: stored, isChecking: !stored, isHydrated: false };
   });
 
   const checkDone = useRef(false);
@@ -106,12 +108,15 @@ export function SuperAdminProvider({ children }: { children: ReactNode }) {
       }
       // Mark check as complete ONLY on success
       checkDone.current = true;
-      setState({ isSuperAdmin: result, isChecking: false });
+      // isHydrated=true: backend check resolved — sidebar can now use the definitive value
+      setState({ isSuperAdmin: result, isChecking: false, isHydrated: true });
     } catch {
       // Backend error → keep current displayed value (never flip true→false on network error).
       // Do NOT set checkDone.current=true on error — allow retry on next render.
       checkDone.current = false;
-      setState((prev) => ({ ...prev, isChecking: false }));
+      // isHydrated=true even on error — use the localStorage value as the definitive result
+      // so the sidebar doesn't flicker waiting for a retry that may never succeed.
+      setState((prev) => ({ ...prev, isChecking: false, isHydrated: true }));
       // Schedule one automatic retry after 2 seconds
       setTimeout(() => {
         checkDone.current = false;
@@ -122,7 +127,11 @@ export function SuperAdminProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // If module cache already has a result from this session, no backend call needed
     if (adminResultCache !== null) {
-      setState({ isSuperAdmin: adminResultCache, isChecking: false });
+      setState({
+        isSuperAdmin: adminResultCache,
+        isChecking: false,
+        isHydrated: true,
+      });
       return;
     }
 

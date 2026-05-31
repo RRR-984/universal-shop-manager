@@ -1,29 +1,26 @@
 {
-  "overview": "Universal Shop System is a globally scalable POS and inventory solution for all shop types and countries. It features 16+ shop types, full billing with partial payments, customer profiles, smart alerts, return & refund system with store credit, barcode scanning, supplier management, and a Super Admin panel.",
+  "overview": "A globally scalable POS and inventory management system supporting all shop types, countries, currencies, and languages with maximum automation.",
   "features": [
-    "Return & Refund system with partial item returns and shop owner approval workflow",
-    "Store credit — customers earn on approved returns, use in future bills",
-    "Return history per bill and per customer profile",
-    "16+ shop types — Mobile, Electronics, Clothing, Jewelry, Medical, Grocery, and more",
-    "Full billing with part/full payment tracking and WhatsApp sharing",
-    "Smart Alerts — expiry, low stock, dead stock, pending payments",
-    "Supplier management with price comparison modal",
-    "Barcode scanning for product entry and billing",
-    "Super Admin panel — manage all shops and users",
-    "5-shop limit per Internet Identity account"
+    "Multi-shop management with strict data isolation",
+    "16+ shop types with smart fields and auto-naming",
+    "Billing with retail, wholesale, and custom pricing",
+    "Live gold and silver rates for jewelry shops",
+    "Barcode scanning and supplier management",
+    "Smart alerts for expiry, low stock, and dead stock",
+    "Return and refund system with store credit",
+    "Super Admin panel with full shop and user control",
+    "Bulk entry and bulk selling spreadsheet forms",
+    "Multi-currency and multi-language support including RTL"
   ],
-  "category": "productivity",
+  "category": "pos-inventory",
   "tags": [
-    "shop-management",
+    "shop",
     "pos",
-    "billing",
     "inventory",
-    "return-refund",
-    "store-credit",
-    "multi-shop",
-    "india",
-    "gst",
-    "retail"
+    "billing",
+    "multi-currency",
+    "global",
+    "automation"
   ],
-  "last_updated": "2026-05-10T15:37:12.899Z"
+  "last_updated": "2026-05-28T06:37:47.527Z"
 }

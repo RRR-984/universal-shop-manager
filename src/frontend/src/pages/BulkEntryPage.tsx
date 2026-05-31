@@ -482,6 +482,17 @@ function calcCostPrice(row: BulkRow): string {
   return total > 0 ? String(total) : "";
 }
 
+function calcCostPerUnit(row: BulkRow): string {
+  const p = Number.parseFloat(row.purchasePrice) || 0;
+  const t = Number.parseFloat(row.transportCost) || 0;
+  const l = Number.parseFloat(row.labourCost) || 0;
+  const o = Number.parseFloat(row.otherCost) || 0;
+  const total = p + t + l + o;
+  const qty = Number.parseFloat(row.stock) || 0;
+  if (qty <= 0 || total <= 0) return "";
+  return (total / qty).toFixed(2);
+}
+
 function autoName(
   shopType:
     | ShopType
@@ -1136,6 +1147,7 @@ function BulkRow({
   onCopy,
   saveResult,
   onOpenSizeModal,
+  currencySymbol,
 }: {
   row: BulkRow;
   idx: number;
@@ -1149,8 +1161,10 @@ function BulkRow({
   onCopy: () => void;
   saveResult?: RowSaveResult;
   onOpenSizeModal: () => void;
+  currencySymbol: string;
 }) {
   const costPrice = calcCostPrice(row);
+  const costPerUnit = calcCostPerUnit(row);
   // Only auto-fill name when user has NOT manually locked it AND the computed
   // auto-name is non-empty. If autoNameLocked is true, always show row.name.
   const computedName = !row.autoNameLocked
@@ -1280,6 +1294,17 @@ function BulkRow({
             className="h-8 flex items-center px-2 text-xs rounded-md bg-muted/50 text-muted-foreground border border-border font-mono"
           >
             {costPrice || "—"}
+          </div>
+        </Cell>
+
+        {/* Per Unit cost (auto-calc, read-only) */}
+        <Cell>
+          <div
+            data-ocid={`bulk_entry.cost_per_unit.${idx + 1}`}
+            className="h-8 flex items-center px-2 text-xs rounded-md bg-primary/5 text-primary border border-primary/20 font-mono font-semibold"
+            title="(Purchase + Transport + Labour + Other) ÷ Stock"
+          >
+            {costPerUnit ? `${currencySymbol}${costPerUnit}` : "—"}
           </div>
         </Cell>
 
@@ -2601,6 +2626,13 @@ export function BulkEntryPage() {
                 Cost {currencySymbol}
               </th>
               <th
+                className="px-2 py-2.5 text-left text-xs font-semibold text-muted-foreground bg-primary/5"
+                style={{ minWidth: 90 }}
+                title="Total cost ÷ quantity"
+              >
+                Per Unit
+              </th>
+              <th
                 className="px-2 py-2.5 text-left text-xs font-semibold text-muted-foreground"
                 style={{ minWidth: 100 }}
               >
@@ -2657,6 +2689,7 @@ export function BulkEntryPage() {
                 onCopy={() => copyRow(row.id)}
                 saveResult={saveResults.find((r) => r.rowIdx === idx)}
                 onOpenSizeModal={() => setSizeModalRowId(row.id)}
+                currencySymbol={currencySymbol}
               />
             ))}
           </tbody>

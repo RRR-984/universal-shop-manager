@@ -5,10 +5,13 @@ import Runtime     "mo:core/Runtime";
 import BillSharingTypes "../types/bill-sharing";
 import Time "mo:core/Time";
 import RolesLib "../lib/roles";
+import Text "mo:core/Text";
+import AdminLib "../lib/admin";
 
-mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { var config : ?Types.ShopConfig }, rolesState : RolesLib.State) {
+mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { var config : ?Types.ShopConfig }, rolesState : RolesLib.State, adminState : AdminLib.State) {
   // ── Bill CRUD ─────────────────────────────────────────────────────────────
   public shared ({ caller }) func createBill(shopId : Text, input : Types.CreateBillInput) : async Types.Bill {
+    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     let shopConfig = switch (settingsState.config) {
       case null Runtime.trap("Shop not configured. Please complete setup first.");
       case (?cfg) cfg;
@@ -21,13 +24,19 @@ mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { v
     let enriched = BillLib.enrichItems(isolatedInput.items, shopConfig.taxRate, shopConfig.taxSystem);
 
     // Calculate profit using product cost prices
+    // Formula: sum of [(rate * qty - discount) - (costPrice * qty)] per item
+    // Bill-level extraCharges do NOT affect profit — only item-level discount matters.
     var profit : Float = 0.0;
     enriched.forEach(func(item : Types.BillItem) {
       let costPrice = switch (ProdLib.getProduct(prodState, item.productId)) {
         case null 0.0;
         case (?pv) pv.costPrice;
       };
-      let itemProfit = (item.rate - costPrice) * item.qty - item.discount;
+      // Revenue from this item minus its cost basis
+      let itemRevenue = item.rate * item.qty - item.discount;
+      let itemCost    = costPrice * item.qty;
+      let itemProfit  = itemRevenue - itemCost;
+      // Only add positive profit; negative means cost > sale price (loss item, don't drag profit below 0 cumulatively)
       if (itemProfit > 0.0) { profit += itemProfit };
     });
 
@@ -46,7 +55,8 @@ mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { v
   };
 
   // ── Bill sharing ───────────────────────────────────────────────────────────
-  public shared func generateBillShareToken(billId : Types.BillId) : async ?Text {
+  public shared ({ caller }) func generateBillShareToken(billId : Types.BillId) : async ?Text {
+    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     BillLib.generateShareToken(billState, billId);
   };
 
@@ -64,21 +74,24 @@ mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { v
     BillLib.listBills(billState, isolatedFilter);
   };
 
-  public shared func cancelBill(id : Types.BillId) : async Bool {
+  public shared ({ caller }) func cancelBill(id : Types.BillId) : async Bool {
+    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     BillLib.cancelBill(billState, id);
   };
 
   // ── Payment management ───────────────────────────────────────────────────
   /// Returns all bills with partial payment and pending amount > 0. Owner-only.
   public shared ({ caller }) func getPendingPaymentBills(shopId : Text) : async [Types.Bill] {
+    if (shopId.size() == 0) return [];
     if (not RolesLib.isShopOwner(rolesState, shopId, caller)) {
       Runtime.trap("Access denied: owner only");
     };
-    BillLib.getPendingPaymentBills(billState);
+    BillLib.getPendingPaymentBills(billState, shopId);
   };
 
   /// Records an additional payment against a partial bill. Owner-only.
   public shared ({ caller }) func recordPayment(shopId : Text, billId : Types.BillId, additionalAmount : Float) : async Types.Bill {
+    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     if (not RolesLib.isShopOwner(rolesState, shopId, caller)) {
       Runtime.trap("Access denied: owner only");
     };
@@ -100,6 +113,22 @@ mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { v
       case (#ok) ();
       case (#err msg) Runtime.trap(msg);
     };
+  };
+
+  // ── Stock value & movement analytics ────────────────────────────────────────
+  public shared ({ caller }) func getStockValue(shopId : Text) : async Float {
+    RolesLib.ensureOwner(rolesState, shopId, caller);
+    BillLib.getStockValue(prodState, shopId);
+  };
+
+  public shared ({ caller }) func getFastMovingProducts(shopId : Text, limit : Nat) : async [Types.TopProduct] {
+    RolesLib.ensureOwner(rolesState, shopId, caller);
+    BillLib.getFastMovingProducts(billState, shopId, limit);
+  };
+
+  public shared ({ caller }) func getSlowMovingProducts(shopId : Text, limit : Nat) : async [Types.TopProduct] {
+    RolesLib.ensureOwner(rolesState, shopId, caller);
+    BillLib.getSlowMovingProducts(billState, prodState, shopId, limit);
   };
 
   // ── Analytics ─────────────────────────────────────────────────────────────

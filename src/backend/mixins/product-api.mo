@@ -1,10 +1,16 @@
 import Types      "../types/common";
 import ProdLib    "../lib/product";
 import SettingsLib "../lib/settings";
+import RolesLib   "../lib/roles";
+import Text "mo:core/Text";
+import Runtime "mo:core/Runtime";
+import AdminLib "../lib/admin";
 
-mixin (state : ProdLib.State, settingsState : SettingsLib.State) {
+mixin (state : ProdLib.State, settingsState : SettingsLib.State, rolesState : RolesLib.State, adminState : AdminLib.State) {
   // ── Product CRUD ──────────────────────────────────────────────────────────
-  public shared func createProduct(input : Types.CreateProductInput) : async Types.ProductView {
+  public shared ({ caller }) func createProduct(input : Types.CreateProductInput) : async Types.ProductView {
+    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
+    if (input.shopId.size() == 0) Runtime.trap("shopId must not be empty");
     ProdLib.createProduct(state, input);
   };
 
@@ -13,14 +19,23 @@ mixin (state : ProdLib.State, settingsState : SettingsLib.State) {
   };
 
   public query func listProducts(filter : Types.ProductFilter) : async [Types.ProductView] {
+    // Guard: if shopId is empty, return empty to prevent cross-shop leak
+    switch (filter.shopId) {
+      case (?sid) { if (sid.size() == 0) return [] };
+      case null {};
+    };
     ProdLib.listProducts(state, filter);
   };
 
-  public shared func updateProduct(input : Types.UpdateProductInput) : async ?Types.ProductView {
-    ProdLib.updateProduct(state, input);
+  public shared ({ caller }) func updateProduct(input : Types.UpdateProductInput) : async ?Types.ProductView {
+    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
+    if (input.shopId.size() == 0) Runtime.trap("shopId must not be empty");
+    RolesLib.ensureOwner(rolesState, input.shopId, caller);
+    ProdLib.updateProduct(state, input.shopId, input);
   };
 
-  public shared func deleteProduct(id : Types.ProductId) : async Bool {
+  public shared ({ caller }) func deleteProduct(id : Types.ProductId) : async Bool {
+    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     ProdLib.deleteProduct(state, id);
   };
 

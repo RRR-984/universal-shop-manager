@@ -4,6 +4,7 @@ import Time   "mo:core/Time";
 import Text   "mo:core/Text";
 import Nat    "mo:core/Nat";
 import Int "mo:core/Int";
+import Runtime "mo:core/Runtime";
 
 module {
   // ── State types ──────────────────────────────────────────────────────────────
@@ -18,16 +19,36 @@ module {
 
   // ── CRUD ─────────────────────────────────────────────────────────────────────
   public func createProduct(state : State, input : Types.CreateProductInput) : Types.ProductView {
-    // IMEI validation: required only when mobileCategory == "Mobile"
+    // Guard: empty shopId is not allowed
+    if (input.shopId.size() == 0) {
+      Runtime.trap("shopId must not be empty");
+    };
+    // IMEI validation: required only when mobileCategory == "Mobile" and IMEI is provided
     switch (input.engineFields) {
       case (#Mobile mf) {
-        if (mf.mobileCategory == "Mobile") {
+        if (mf.mobileCategory == "Mobile" and mf.imei != "") {
           if (mf.imei.size() != 15) {
-            assert false; // trap: IMEI must be exactly 15 digits for mobile phones
+            Runtime.trap("IMEI must be exactly 15 digits for mobile phones");
           };
         };
       };
       case _ {};
+    };
+    // Duplicate barcode check within the same shop
+    switch (input.barcode) {
+      case (?bc) {
+        if (bc.size() > 0) {
+          let existing = state.products.find(func(p : Types.Product) : Bool {
+            p.shopId == input.shopId and
+            (switch (p.barcode) { case null false; case (?pbc) pbc == bc })
+          });
+          switch (existing) {
+            case (?_) { Runtime.trap("Barcode already exists in this shop") };
+            case null {};
+          };
+        };
+      };
+      case null {};
     };
     let now = Time.now();
     let id  = state.nextId;
@@ -51,7 +72,7 @@ module {
       engineFields   = input.engineFields;
       createdAt      = now;
       updatedAt      = now;
-      var lastSaleTime = null;
+      var lastSaleTime = ?now; // set to now so new products are never immediately dead stock
     };
     state.products.add(p);
     toView(p);
@@ -65,11 +86,16 @@ module {
   };
 
   public func listProducts(state : State, filter : Types.ProductFilter) : [Types.ProductView] {
-    let filtered = state.products.filter(func(p : Types.Product) : Bool {
-      let matchShopId = switch (filter.shopId) {
-        case null true;
-        case (?sid) p.shopId == sid;
+    // Guard: shopId is mandatory — returning all products across shops is never safe
+    let shopIdToMatch : Text = switch (filter.shopId) {
+      case null return [];
+      case (?sid) {
+        if (sid.size() == 0) return [];
+        sid;
       };
+    };
+    let filtered = state.products.filter(func(p : Types.Product) : Bool {
+      let matchShopId = p.shopId == shopIdToMatch;
       let matchShopType = switch (filter.shopType) {
         case null true;
         case (?st) p.shopType == st;
@@ -95,10 +121,45 @@ module {
     filtered.map<Types.Product, Types.ProductView>(func(p) { toView(p) }).toArray();
   };
 
-  public func updateProduct(state : State, input : Types.UpdateProductInput) : ?Types.ProductView {
+  public func updateProduct(state : State, shopId : Text, input : Types.UpdateProductInput) : ?Types.ProductView {
+    // Guard: empty shopId is not allowed
+    if (shopId.size() == 0) {
+      Runtime.trap("shopId must not be empty");
+    };
+    // IMEI validation on update: same rule as on create
+    switch (input.engineFields) {
+      case (#Mobile mf) {
+        if (mf.mobileCategory == "Mobile" and mf.imei != "") {
+          if (mf.imei.size() != 15) {
+            Runtime.trap("IMEI must be exactly 15 digits for mobile phones");
+          };
+        };
+      };
+      case _ {};
+    };
+    // Duplicate barcode check on update: ensure no other product in same shop has this barcode
+    switch (input.barcode) {
+      case (?bc) {
+        if (bc.size() > 0) {
+          let duplicate = state.products.find(func(p : Types.Product) : Bool {
+            p.shopId == shopId and p.id != input.id and
+            (switch (p.barcode) { case null false; case (?pbc) pbc == bc })
+          });
+          switch (duplicate) {
+            case (?_) { Runtime.trap("Barcode already exists in this shop") };
+            case null {};
+          };
+        };
+      };
+      case null {};
+    };
     var found = false;
     state.products.mapInPlace(func(p : Types.Product) : Types.Product {
       if (p.id == input.id) {
+        // Ownership check: product must belong to the caller's shop
+        if (p.shopId != shopId) {
+          Runtime.trap("Product does not belong to this shop");
+        };
         found := true;
         {
           p with
@@ -133,21 +194,31 @@ module {
   };
 
   public func searchProducts(state : State, shopId : Text, searchTerm : Text) : [Types.ProductView] {
+    // Guard: empty shopId would return all shops' data
+    if (shopId.size() == 0) return [];
     let term = searchTerm.toLower();
     let matched = state.products.filter(func(p : Types.Product) : Bool {
       let matchShopId = p.shopId == shopId;
-      let matchName   = p.name.toLower().contains(#text term);
-      let matchBarcode = switch (p.barcode) {
-        case null false;
-        case (?bc) bc.toLower().contains(#text term);
+      let matchActive = p.isActive;
+      if (term == "") {
+        // Empty search term: return all active products for this shop
+        matchShopId and matchActive;
+      } else {
+        let matchName   = p.name.toLower().contains(#text term);
+        let matchBarcode = switch (p.barcode) {
+          case null false;
+          case (?bc) bc.toLower().contains(#text term);
+        };
+        let matchCategory = p.category.toLower().contains(#text term);
+        matchShopId and matchActive and (matchName or matchBarcode or matchCategory);
       };
-      matchShopId and (matchName or matchBarcode);
     });
     matched.map<Types.Product, Types.ProductView>(func(p) { toView(p) }).toArray();
   };
 
   // Exact barcode lookup within a shop — for scanner workflows.
   public func getProductByBarcode(state : State, shopId : Text, barcode : Text) : ?Types.ProductView {
+    if (shopId.size() == 0) return null;
     switch (state.products.find(func(p : Types.Product) : Bool {
       p.shopId == shopId and (switch (p.barcode) { case null false; case (?bc) bc == barcode })
     })) {
@@ -183,6 +254,7 @@ module {
 
   // ── Analytics helpers ─────────────────────────────────────────────────────────
   public func getLowStockProducts(state : State, shopId : Text) : [Types.LowStockProduct] {
+    if (shopId.size() == 0) return [];
     let low = state.products.filter(func(p : Types.Product) : Bool {
       p.isActive and p.stock <= p.minStock and p.shopId == shopId;
     });
@@ -245,6 +317,7 @@ module {
   };
 
   public func getNearExpiryProducts(state : State, shopId : Text, withinDays : Int) : [Types.NearExpiryProduct] {
+    if (shopId.size() == 0) return [];
     let now = Time.now();
     let cutoff : Int = now + withinDays * 86_400_000_000_000;
     let result = List.empty<Types.NearExpiryProduct>();
@@ -276,8 +349,10 @@ module {
 
   // ── Dead stock detection ──────────────────────────────────────────────────────
   // Returns active products that have had no sale for >= inactiveDays days.
-  // Products never sold (lastSaleTime = null) are always included.
+  // Products with lastSaleTime = null (newly created) are NOT flagged as dead stock.
   public func getDeadStockProducts(state : State, shopId : Text, inactiveDays : Nat) : [Types.DeadStockProduct] {
+    // Guard: empty shopId would return all shops' data
+    if (shopId.size() == 0) return [];
     let now = Time.now();
     let nanosPerDay : Int = 86_400_000_000_000;
     let cutoff : Int = now - inactiveDays.toInt() * nanosPerDay;
@@ -286,9 +361,9 @@ module {
       if (p.isActive and p.shopId == shopId) {
         switch (p.lastSaleTime) {
           case null {
-            // Never sold — count days inactive from creation
-            let daysInactive : Nat = Int.abs((now - p.createdAt) / nanosPerDay);
-            result.add({ productId = p.id; name = p.name; lastSaleTime = null; daysInactive });
+            // null lastSaleTime: product was just created (we set it to now on create).
+            // Treat as not-dead-stock — do NOT flag newly created products.
+            ();
           };
           case (?lst) {
             if (lst <= cutoff) {

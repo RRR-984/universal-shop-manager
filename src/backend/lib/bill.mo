@@ -8,6 +8,7 @@ import Nat      "mo:core/Nat";
 import Text     "mo:core/Text";
 import Int      "mo:core/Int";
 import Order    "mo:core/Order";
+import Float "mo:core/Float";
 
 module {
   // ── State types ──────────────────────────────────────────────────────────────
@@ -167,11 +168,16 @@ module {
   };
 
   public func listBills(state : State, filter : Types.BillFilter) : [Types.Bill] {
-    state.bills.filter(func(b : Types.Bill) : Bool {
-      let matchShop = switch (filter.shopId) {
-        case null true;
-        case (?sid) b.shopId == sid;
+    // Guard: shopId is mandatory — no cross-shop bill leaks
+    let shopIdToMatch : Text = switch (filter.shopId) {
+      case null return [];
+      case (?sid) {
+        if (sid.size() == 0) return [];
+        sid;
       };
+    };
+    state.bills.filter(func(b : Types.Bill) : Bool {
+      let matchShop = b.shopId == shopIdToMatch;
       let matchFrom = switch (filter.fromDate) {
         case null true;
         case (?fd) b.createdAt >= fd;
@@ -209,9 +215,11 @@ module {
 
   // ── Payment management ────────────────────────────────────────────────────
   /// Returns all bills with paymentType=#partial AND amountPending > 0
-  public func getPendingPaymentBills(state : State) : [Types.Bill] {
+  public func getPendingPaymentBills(state : State, shopId : Text) : [Types.Bill] {
+    // Guard: empty shopId is not allowed — would return all shops' pending bills
+    if (shopId.size() == 0) return [];
     state.bills.filter(func(b : Types.Bill) : Bool {
-      b.status == #Saved and b.paymentType == #partial and b.amountPending > 0.0;
+      b.shopId == shopId and b.status == #Saved and b.paymentType == #partial and b.amountPending > 0.0;
     }).toArray();
   };
 
@@ -321,6 +329,100 @@ module {
     sorted.sliceToArray(0, takeN);
   };
 
+  // ── Stock value ───────────────────────────────────────────────────────────────
+  /// Total stock value = sum of (stock * costPerUnit) for all active products in shop.
+  /// costPerUnit = (costPrice + transportCost + labourCost) / stock
+  /// If stock == 0, that product contributes 0.
+  public func getStockValue(prodState : { products : List.List<Types.Product> }, shopId : Text) : Float {
+    if (shopId.size() == 0) return 0.0;
+    var total : Float = 0.0;
+    prodState.products.forEach(func(p : Types.Product) {
+      if (p.isActive and p.shopId == shopId and p.stock > 0.0) {
+        let transport = switch (p.transportCost) { case null 0.0; case (?v) v };
+        let labour    = switch (p.labourCost)    { case null 0.0; case (?v) v };
+        let totalCost = p.costPrice + transport + labour;
+        let costPerUnit = totalCost / p.stock;
+        total += p.stock * costPerUnit;
+      };
+    });
+    total;
+  };
+
+  // ── Fast / Slow moving products ───────────────────────────────────────────────
+  /// Fast moving = top N products by totalQty sold in the last 30 days (Month period).
+  public func getFastMovingProducts(
+    state    : State,
+    shopId   : Text,
+    limit    : Nat,
+  ) : [Types.TopProduct] {
+    let all = getTopProducts(state, shopId, #Month, 0);
+    // Sort descending by totalQty
+    let sorted = List.fromArray<Types.TopProduct>(all);
+    let sortedArr = sorted.sort(func(a : Types.TopProduct, b : Types.TopProduct) : Order.Order {
+      if (a.totalQty > b.totalQty) #less
+      else if (a.totalQty < b.totalQty) #greater
+      else #equal;
+    });
+    let takeN : Int = Nat.min(limit, sortedArr.size()).toInt();
+    sortedArr.sliceToArray(0, takeN);
+  };
+
+  /// Slow moving = active products with stock > 0 that have low/zero qty sold in the last 90 days.
+  /// Uses Month period (30 days) for recent sales; products with totalQty == 0 or not in top list
+  /// within 90-day window are considered slow moving. Sorted by lastSaleTime ascending (oldest first).
+  public func getSlowMovingProducts(
+    state     : State,
+    prodState : { products : List.List<Types.Product> },
+    shopId    : Text,
+    limit     : Nat,
+  ) : [Types.TopProduct] {
+    if (shopId.size() == 0) return [];
+    // Use a 90-day window via a custom period
+    let now         : Int = Time.now();
+    let nanosPerDay : Int = 86_400_000_000_000;
+    let periodStart90 : Int = now - 90 * nanosPerDay;
+
+    // Build a map of productId → totalQty sold in last 90 days
+    let qtyMap90 = Map.empty<Types.ProductId, Float>();
+    state.bills.forEach(func(b : Types.Bill) {
+      if (b.shopId == shopId and b.status == #Saved and b.createdAt >= periodStart90 and b.createdAt <= now) {
+        for (item in b.items.values()) {
+          let prev = switch (qtyMap90.get(item.productId)) { case null 0.0; case (?v) v };
+          qtyMap90.add(item.productId, prev + item.qty);
+        };
+      };
+    });
+
+    // Collect all active products with stock > 0 for this shop
+    let result = List.empty<Types.TopProduct>();
+    prodState.products.forEach(func(p : Types.Product) {
+      if (p.isActive and p.shopId == shopId and p.stock > 0.0) {
+        let qtySold = switch (qtyMap90.get(p.id)) { case null 0.0; case (?v) v };
+        // Slow moving: sold 0 units or sold less than 1 unit in 90 days
+        if (qtySold < 1.0) {
+          result.add({ productId = p.id; name = p.name; totalQty = qtySold; revenue = 0.0; profit = 0.0 });
+        };
+      };
+    });
+
+    // Sort by lastSaleTime ascending (oldest first) — products without recent sales first
+    // We re-scan product state to get lastSaleTime for sorting
+    let withLastSale = result.sort(func(a : Types.TopProduct, b : Types.TopProduct) : Order.Order {
+      let lstA = switch (prodState.products.find(func(p : Types.Product) : Bool { p.id == a.productId })) {
+        case null 0;
+        case (?p) switch (p.lastSaleTime) { case null 0; case (?t) t };
+      };
+      let lstB = switch (prodState.products.find(func(p : Types.Product) : Bool { p.id == b.productId })) {
+        case null 0;
+        case (?p) switch (p.lastSaleTime) { case null 0; case (?t) t };
+      };
+      Int.compare(lstA, lstB);
+    });
+
+    let takeN : Int = Nat.min(limit, withLastSale.size()).toInt();
+    withLastSale.sliceToArray(0, takeN);
+  };
+
   // ── Shop data cleanup ─────────────────────────────────────────────────────────
   /// Removes all bills belonging to a given shop — called by adminDeleteShop cascade.
   public func deleteShopBills(state : State, shopId : Text) {
@@ -372,7 +474,8 @@ module {
     for (item in items.values()) {
       let lineBase  = item.qty * item.rate - item.discount;
       let safeBase  = if (lineBase > 0.0) lineBase else 0.0;
-      let taxAmt    = safeBase * (taxRate / 100.0);
+      // When taxRate is 0 the shop has GST/tax turned OFF — apply no tax at all
+      let taxAmt    = if (taxRate == 0.0) 0.0 else safeBase * (taxRate / 100.0);
       let lineTotal = safeBase + taxAmt;
       result.add({ item with taxAmt = taxAmt; lineTotal = lineTotal });
     };

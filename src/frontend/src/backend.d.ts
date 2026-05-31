@@ -256,6 +256,7 @@ export interface GroceryFields {
 export interface UpdateProductInput {
     id: ProductId;
     retailPrice: number;
+    shopId: string;
     name: string;
     wholesalePrice: number;
     unit: string;
@@ -660,6 +661,10 @@ export enum TaxSystem {
     Generic = "Generic",
     SalesTax = "SalesTax"
 }
+export enum Variant_ok_blocked {
+    ok = "ok",
+    blocked = "blocked"
+}
 export interface backendInterface {
     addAdminNote(targetPrincipal: string, content: string): Promise<{
         __kind__: "ok";
@@ -693,6 +698,7 @@ export interface backendInterface {
     applyStoreCredit(shopId: string, input: ApplyStoreCreditInput): Promise<CustomerCredit>;
     approveReturn(shopId: string, returnBillId: ReturnBillId): Promise<ReturnBill>;
     cancelBill(id: BillId): Promise<boolean>;
+    checkIfBlocked(): Promise<boolean>;
     createBill(shopId: string, input: CreateBillInput): Promise<Bill>;
     createOrUpdateCustomer(shopId: string, name: string, phone: string): Promise<CustomerId>;
     createProduct(input: CreateProductInput): Promise<ProductView>;
@@ -735,6 +741,7 @@ export interface backendInterface {
     getCustomerCredit(shopId: string, customerPhone: string): Promise<CustomerCredit>;
     getDeadStockProducts(shopId: string, inactiveDays: bigint): Promise<Array<DeadStockProduct>>;
     getDefaultCharges(): Promise<SmartDefaultCharges | null>;
+    getFastMovingProducts(shopId: string, limit: bigint): Promise<Array<TopProduct>>;
     getLastNPurchasesForProduct(shopId: string, productId: bigint, n: bigint): Promise<Array<SupplierPurchaseWithName>>;
     getLowStockProducts(shopId: string): Promise<Array<LowStockProduct>>;
     getMetalRates(): Promise<MetalRates>;
@@ -750,6 +757,8 @@ export interface backendInterface {
     getShopConfig(): Promise<ShopConfig | null>;
     getShopCustomers(shopId: string): Promise<Array<CustomerView>>;
     getShopStaff(shopId: string): Promise<Array<StaffMember>>;
+    getSlowMovingProducts(shopId: string, limit: bigint): Promise<Array<TopProduct>>;
+    getStockValue(shopId: string): Promise<number>;
     getSupplier(supplierId: SupplierId): Promise<Supplier | null>;
     getTopProducts(shopId: string, period: AnalyticsPeriod, limit: bigint): Promise<Array<TopProduct>>;
     getUserDetails(principal: string): Promise<{
@@ -768,6 +777,7 @@ export interface backendInterface {
     listPurchasesBySupplier(shopId: string, supplierId: SupplierId): Promise<Array<SupplierPurchase>>;
     listReturns(shopId: string, filter: ReturnFilter): Promise<Array<ReturnBill>>;
     listSuppliersByShop(shopId: string): Promise<Array<Supplier>>;
+    loginCheck(): Promise<Variant_ok_blocked>;
     recordPayment(shopId: string, billId: BillId, additionalAmount: number): Promise<Bill>;
     recordReminderSent(shopId: string, billId: BillId): Promise<void>;
     recordUserLogin(shopName: string, shopType: string): Promise<void>;

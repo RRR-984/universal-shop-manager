@@ -549,6 +549,7 @@ export interface TransformationOutput {
 export interface UpdateProductInput {
   'id' : ProductId,
   'retailPrice' : number,
+  'shopId' : string,
   'name' : string,
   'wholesalePrice' : number,
   'unit' : string,
@@ -606,6 +607,7 @@ export interface _SERVICE {
   >,
   'approveReturn' : ActorMethod<[string, ReturnBillId], ReturnBill>,
   'cancelBill' : ActorMethod<[BillId], boolean>,
+  'checkIfBlocked' : ActorMethod<[], boolean>,
   'createBill' : ActorMethod<[string, CreateBillInput], Bill>,
   'createOrUpdateCustomer' : ActorMethod<[string, string, string], CustomerId>,
   'createProduct' : ActorMethod<[CreateProductInput], ProductView>,
@@ -658,6 +660,7 @@ export interface _SERVICE {
     Array<DeadStockProduct>
   >,
   'getDefaultCharges' : ActorMethod<[], [] | [SmartDefaultCharges]>,
+  'getFastMovingProducts' : ActorMethod<[string, bigint], Array<TopProduct>>,
   'getLastNPurchasesForProduct' : ActorMethod<
     [string, bigint, bigint],
     Array<SupplierPurchaseWithName>
@@ -679,6 +682,8 @@ export interface _SERVICE {
   'getShopConfig' : ActorMethod<[], [] | [ShopConfig]>,
   'getShopCustomers' : ActorMethod<[string], Array<CustomerView>>,
   'getShopStaff' : ActorMethod<[string], Array<StaffMember>>,
+  'getSlowMovingProducts' : ActorMethod<[string, bigint], Array<TopProduct>>,
+  'getStockValue' : ActorMethod<[string], number>,
   'getSupplier' : ActorMethod<[SupplierId], [] | [Supplier]>,
   'getTopProducts' : ActorMethod<
     [string, AnalyticsPeriod, bigint],
@@ -704,6 +709,7 @@ export interface _SERVICE {
   >,
   'listReturns' : ActorMethod<[string, ReturnFilter], Array<ReturnBill>>,
   'listSuppliersByShop' : ActorMethod<[string], Array<Supplier>>,
+  'loginCheck' : ActorMethod<[], { 'ok' : null } | { 'blocked' : null }>,
   'recordPayment' : ActorMethod<[string, BillId, number], Bill>,
   'recordReminderSent' : ActorMethod<[string, BillId], undefined>,
   'recordUserLogin' : ActorMethod<[string, string], undefined>,

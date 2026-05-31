@@ -32,6 +32,7 @@ type UpdateProductInput =
    minStock: float64;
    name: text;
    retailPrice: float64;
+   shopId: text;
    stock: float64;
    transportCost: opt float64;
    unit: text;
@@ -711,6 +712,7 @@ service : {
    (CustomerCredit);
   approveReturn: (shopId: text, returnBillId: ReturnBillId) -> (ReturnBill);
   cancelBill: (id: BillId) -> (bool);
+  checkIfBlocked: () -> (bool) query;
   createBill: (shopId: text, input: CreateBillInput) -> (Bill);
   createOrUpdateCustomer: (shopId: text, name: text, phone: text) ->
    (CustomerId);
@@ -749,6 +751,7 @@ service : {
   getDeadStockProducts: (shopId: text, inactiveDays: nat) ->
    (vec DeadStockProduct) query;
   getDefaultCharges: () -> (opt SmartDefaultCharges) query;
+  getFastMovingProducts: (shopId: text, limit: nat) -> (vec TopProduct);
   getLastNPurchasesForProduct: (shopId: text, productId: nat, n: nat) ->
    (vec SupplierPurchaseWithName) query;
   getLowStockProducts: (shopId: text) -> (vec LowStockProduct) query;
@@ -768,6 +771,8 @@ service : {
   getShopConfig: () -> (opt ShopConfig) query;
   getShopCustomers: (shopId: text) -> (vec CustomerView) query;
   getShopStaff: (shopId: text) -> (vec StaffMember);
+  getSlowMovingProducts: (shopId: text, limit: nat) -> (vec TopProduct);
+  getStockValue: (shopId: text) -> (float64);
   getSupplier: (supplierId: SupplierId) -> (opt Supplier) query;
   getTopProducts: (shopId: text, period: AnalyticsPeriod, limit: nat) ->
    (vec TopProduct);
@@ -786,6 +791,10 @@ service : {
    (vec SupplierPurchase) query;
   listReturns: (shopId: text, filter: ReturnFilter) -> (vec ReturnBill);
   listSuppliersByShop: (shopId: text) -> (vec Supplier) query;
+  loginCheck: () -> (variant {
+                       blocked;
+                       ok;
+                     });
   recordPayment: (shopId: text, billId: BillId, additionalAmount: float64) ->
    (Bill);
   recordReminderSent: (shopId: text, billId: BillId) -> ();

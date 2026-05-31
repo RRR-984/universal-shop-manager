@@ -1,8 +1,10 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Link } from "@tanstack/react-router";
 import {
   Camera,
+  List,
   Plus,
   Printer,
   RotateCcw,
@@ -98,12 +100,16 @@ export function BillingPage() {
   // Stable ref to latest searchProducts — avoids recreating handleSearch on every api change
   const searchProductsRef = useRef(api.searchProducts);
   const getProductByBarcodeRef = useRef(api.getProductByBarcode);
+  const listProductsRef = useRef(api.listProducts);
   useEffect(() => {
     searchProductsRef.current = api.searchProducts;
   }, [api.searchProducts]);
   useEffect(() => {
     getProductByBarcodeRef.current = api.getProductByBarcode;
   }, [api.getProductByBarcode]);
+  useEffect(() => {
+    listProductsRef.current = api.listProducts;
+  }, [api.listProducts]);
 
   // Customer autocomplete state
   const [customerSuggestions, setCustomerSuggestions] = useState<
@@ -118,7 +124,47 @@ export function BillingPage() {
   const [applyingCredit, setApplyingCredit] = useState(false);
 
   const activeShopId = useStore((s) => s.activeShopId);
-  const shopId = activeShopId ?? shopConfig?.shopName ?? "default";
+
+  // shopIdRef: always-fresh shopId even when Zustand hasn't hydrated yet.
+  // Returns null (NOT empty string) when no shop ID found — empty string
+  // would cause the backend to return all shops' data (cross-shop leak).
+  const shopIdRef = useRef<string | null>(null);
+  const resolveShopId = useCallback((): string | null => {
+    if (activeShopId) return activeShopId;
+    const keys = ["activeShopId", "currentShopId", "shopId", "selectedShopId"];
+    for (const k of keys) {
+      const v = localStorage.getItem(k);
+      if (v?.trim()) return v.trim();
+    }
+    // Try Zustand persist keys
+    for (const storeKey of [
+      "usm-store",
+      "shop-storage",
+      "universal-shop-storage",
+      "shop-store",
+    ]) {
+      try {
+        const raw = localStorage.getItem(storeKey);
+        if (raw) {
+          const parsed = JSON.parse(raw) as {
+            state?: { activeShopId?: string };
+          };
+          if (parsed?.state?.activeShopId) return parsed.state.activeShopId;
+        }
+      } catch {
+        /* ignore parse errors */
+      }
+    }
+    // Do NOT fall back to shopName or empty string — return null.
+    return null;
+  }, [activeShopId]);
+
+  // Keep ref always fresh
+  useEffect(() => {
+    shopIdRef.current = resolveShopId();
+  });
+
+  const shopId = resolveShopId() ?? "";
 
   // Fetch store credit when customer phone changes
   const creditFetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
@@ -224,22 +270,68 @@ export function BillingPage() {
         setShowDropdown(false);
         return;
       }
+
+      // Always get the freshest shopId — resolves race condition where Zustand
+      // hasn't hydrated yet when user types.
+      const sid = shopIdRef.current || resolveShopId();
+
+      if (!sid) {
+        // shopId not yet available — wait 500 ms and retry once
+        searchTimerRef.current = setTimeout(() => handleSearch(q), 500);
+        return;
+      }
+
       searchTimerRef.current = setTimeout(async () => {
         setIsSearching(true);
         try {
           const [nameResults, barcodeResult] = await Promise.all([
-            searchProductsRef.current(shopId, q),
-            getProductByBarcodeRef.current(shopId, q.trim()),
+            searchProductsRef.current(sid, q),
+            getProductByBarcodeRef.current(sid, q.trim()),
           ]);
           const nameFiltered = nameResults.filter((p) => p.isActive);
-          // Barcode exact match floated to top, deduped
+          let finalResults = nameFiltered;
+
+          // Fallback 1: listProducts with searchName filter
+          if (finalResults.length === 0) {
+            try {
+              const fallback = await listProductsRef.current({
+                shopId: sid,
+                isActive: true,
+                searchName: q,
+              });
+              finalResults = fallback.filter((p) => p.isActive);
+            } catch (_) {
+              toast.error("Product search failed. Please try again.");
+            }
+          }
+
+          // Fallback 2: load all products and filter client-side
+          if (finalResults.length === 0) {
+            try {
+              const all = await listProductsRef.current({
+                shopId: sid,
+                isActive: true,
+              });
+              const lower = q.toLowerCase();
+              finalResults = all.filter(
+                (p) =>
+                  p.isActive &&
+                  (p.name.toLowerCase().includes(lower) ||
+                    (p.barcode &&
+                      String(p.barcode).toLowerCase().includes(lower))),
+              );
+            } catch (_) {
+              toast.error("Product search failed. Please try again.");
+            }
+          }
+
           if (barcodeResult?.isActive) {
-            const deduped = nameFiltered.filter(
+            const deduped = finalResults.filter(
               (p) => p.id !== barcodeResult.id,
             );
             setSearchResults([barcodeResult, ...deduped]);
           } else {
-            setSearchResults(nameFiltered);
+            setSearchResults(finalResults);
           }
           setShowDropdown(true);
         } finally {
@@ -247,7 +339,7 @@ export function BillingPage() {
         }
       }, 200);
     },
-    [shopId],
+    [resolveShopId],
   );
 
   const addProduct = useCallback(
@@ -356,11 +448,18 @@ export function BillingPage() {
 
   const effectiveGrandTotal = Math.max(0, grandTotal - appliedCredit);
 
-  const totalCost = items.reduce(
+  const _totalCost = items.reduce(
     (acc, i) => acc + i.product.costPrice * i.qty,
     0,
   );
-  const profit = grandTotal - totalCost;
+  // Profit = item revenue (after item-level discounts) minus cost of goods.
+  // Extra charges and bill-level transport fees are NOT deducted — they are pass-through.
+  // If costPrice is 0 for an item, revenue for that item = lineTotal (no cost known).
+  const profit = items.reduce((acc, i) => {
+    const revenue = lineTotal(i);
+    const cost = i.product.costPrice > 0 ? i.product.costPrice * i.qty : 0;
+    return acc + (revenue - cost);
+  }, 0);
 
   const buildBillItems = (): BillItem[] =>
     items.map((i) => ({
@@ -421,6 +520,14 @@ export function BillingPage() {
       setSavedBill(bill);
       toast.success(`Bill #${bill.billNumber} saved successfully!`);
       if (andPrint) setShowPrint(true);
+      // Auto-scroll to share card after a short delay so it renders first
+      if (!andPrint) {
+        setTimeout(() => {
+          document
+            .getElementById("bill-share-section")
+            ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }, 200);
+      }
       // Deduct applied store credit from customer balance
       if (appliedCredit > 0 && customerPhone.trim()) {
         api
@@ -484,6 +591,14 @@ export function BillingPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Link
+            to="/bulk-sell"
+            className="inline-flex items-center gap-1.5 border border-border rounded px-3 py-1 text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            data-ocid="billing.bulk_sell_link"
+          >
+            <List className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Bulk Sell</span>
+          </Link>
           <Button
             type="button"
             variant="outline"
@@ -968,14 +1083,16 @@ export function BillingPage() {
           </div>
 
           {/* Tax Section */}
-          <TaxSection
-            taxSystem={taxSystem}
-            taxRate={taxRate}
-            taxCalc={taxCalc}
-            taxInclusive={taxInclusive}
-            onTaxInclusiveChange={setTaxInclusive}
-            fmt={fmt}
-          />
+          {(shopConfig?.taxRate ?? 0) > 0 && (
+            <TaxSection
+              taxSystem={taxSystem}
+              taxRate={taxRate}
+              taxCalc={taxCalc}
+              taxInclusive={taxInclusive}
+              onTaxInclusiveChange={setTaxInclusive}
+              fmt={fmt}
+            />
+          )}
 
           {/* Payment Mode */}
           {items.length > 0 && (
@@ -1095,9 +1212,20 @@ export function BillingPage() {
 
       {/* Bill Share Card — shown after save */}
       {savedBill && !showPrint && (
-        <div className="fixed bottom-0 left-0 right-0 z-30 p-3 bg-background/95 backdrop-blur-sm border-t shadow-lg lg:relative lg:border-t-0 lg:shadow-none lg:bg-transparent lg:p-0">
+        <div
+          id="bill-share-section"
+          className="p-3 bg-background/95 backdrop-blur-sm border-t shadow-lg lg:border-t-0 lg:shadow-none lg:bg-transparent lg:p-4"
+        >
           <div className="max-w-md mx-auto">
-            <BillShareCard bill={savedBill} shopConfig={shopConfig} />
+            <BillShareCard
+              bill={{
+                ...savedBill,
+                // Ensure WhatsApp works: use customer phone if available, else shop phone
+                customerPhone:
+                  savedBill.customerPhone || shopConfig?.shopPhone || "",
+              }}
+              shopConfig={shopConfig}
+            />
           </div>
           <div className="flex justify-center mt-2 lg:mt-3">
             <Button

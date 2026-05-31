@@ -445,6 +445,13 @@ export const SmartDefaultCharges = IDL.Record({
   'defaultLabourCharge' : IDL.Opt(IDL.Text),
   'defaultTransportCharge' : IDL.Opt(IDL.Text),
 });
+export const TopProduct = IDL.Record({
+  'revenue' : IDL.Float64,
+  'name' : IDL.Text,
+  'productId' : ProductId,
+  'totalQty' : IDL.Float64,
+  'profit' : IDL.Float64,
+});
 export const SupplierPurchaseWithName = IDL.Record({
   'supplierName' : IDL.Text,
   'purchase' : SupplierPurchase,
@@ -553,13 +560,6 @@ export const StaffMember = IDL.Record({
   'role' : ShopRole,
   'addedAt' : IDL.Int,
 });
-export const TopProduct = IDL.Record({
-  'revenue' : IDL.Float64,
-  'name' : IDL.Text,
-  'productId' : ProductId,
-  'totalQty' : IDL.Float64,
-  'profit' : IDL.Float64,
-});
 export const BillFilter = IDL.Record({
   'status' : IDL.Opt(BillStatus),
   'shopId' : IDL.Opt(IDL.Text),
@@ -604,6 +604,7 @@ export const TransformationOutput = IDL.Record({
 export const UpdateProductInput = IDL.Record({
   'id' : ProductId,
   'retailPrice' : IDL.Float64,
+  'shopId' : IDL.Text,
   'name' : IDL.Text,
   'wholesalePrice' : IDL.Float64,
   'unit' : IDL.Text,
@@ -647,6 +648,7 @@ export const idlService = IDL.Service({
     ),
   'approveReturn' : IDL.Func([IDL.Text, ReturnBillId], [ReturnBill], []),
   'cancelBill' : IDL.Func([BillId], [IDL.Bool], []),
+  'checkIfBlocked' : IDL.Func([], [IDL.Bool], ['query']),
   'createBill' : IDL.Func([IDL.Text, CreateBillInput], [Bill], []),
   'createOrUpdateCustomer' : IDL.Func(
       [IDL.Text, IDL.Text, IDL.Text],
@@ -718,6 +720,11 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getDefaultCharges' : IDL.Func([], [IDL.Opt(SmartDefaultCharges)], ['query']),
+  'getFastMovingProducts' : IDL.Func(
+      [IDL.Text, IDL.Nat],
+      [IDL.Vec(TopProduct)],
+      [],
+    ),
   'getLastNPurchasesForProduct' : IDL.Func(
       [IDL.Text, IDL.Nat, IDL.Nat],
       [IDL.Vec(SupplierPurchaseWithName)],
@@ -757,6 +764,12 @@ export const idlService = IDL.Service({
   'getShopConfig' : IDL.Func([], [IDL.Opt(ShopConfig)], ['query']),
   'getShopCustomers' : IDL.Func([IDL.Text], [IDL.Vec(CustomerView)], ['query']),
   'getShopStaff' : IDL.Func([IDL.Text], [IDL.Vec(StaffMember)], []),
+  'getSlowMovingProducts' : IDL.Func(
+      [IDL.Text, IDL.Nat],
+      [IDL.Vec(TopProduct)],
+      [],
+    ),
+  'getStockValue' : IDL.Func([IDL.Text], [IDL.Float64], []),
   'getSupplier' : IDL.Func([SupplierId], [IDL.Opt(Supplier)], ['query']),
   'getTopProducts' : IDL.Func(
       [IDL.Text, AnalyticsPeriod, IDL.Nat],
@@ -785,6 +798,11 @@ export const idlService = IDL.Service({
     ),
   'listReturns' : IDL.Func([IDL.Text, ReturnFilter], [IDL.Vec(ReturnBill)], []),
   'listSuppliersByShop' : IDL.Func([IDL.Text], [IDL.Vec(Supplier)], ['query']),
+  'loginCheck' : IDL.Func(
+      [],
+      [IDL.Variant({ 'ok' : IDL.Null, 'blocked' : IDL.Null })],
+      [],
+    ),
   'recordPayment' : IDL.Func([IDL.Text, BillId, IDL.Float64], [Bill], []),
   'recordReminderSent' : IDL.Func([IDL.Text, BillId], [], []),
   'recordUserLogin' : IDL.Func([IDL.Text, IDL.Text], [], []),
@@ -1273,6 +1291,13 @@ export const idlFactory = ({ IDL }) => {
     'defaultLabourCharge' : IDL.Opt(IDL.Text),
     'defaultTransportCharge' : IDL.Opt(IDL.Text),
   });
+  const TopProduct = IDL.Record({
+    'revenue' : IDL.Float64,
+    'name' : IDL.Text,
+    'productId' : ProductId,
+    'totalQty' : IDL.Float64,
+    'profit' : IDL.Float64,
+  });
   const SupplierPurchaseWithName = IDL.Record({
     'supplierName' : IDL.Text,
     'purchase' : SupplierPurchase,
@@ -1381,13 +1406,6 @@ export const idlFactory = ({ IDL }) => {
     'role' : ShopRole,
     'addedAt' : IDL.Int,
   });
-  const TopProduct = IDL.Record({
-    'revenue' : IDL.Float64,
-    'name' : IDL.Text,
-    'productId' : ProductId,
-    'totalQty' : IDL.Float64,
-    'profit' : IDL.Float64,
-  });
   const BillFilter = IDL.Record({
     'status' : IDL.Opt(BillStatus),
     'shopId' : IDL.Opt(IDL.Text),
@@ -1429,6 +1447,7 @@ export const idlFactory = ({ IDL }) => {
   const UpdateProductInput = IDL.Record({
     'id' : ProductId,
     'retailPrice' : IDL.Float64,
+    'shopId' : IDL.Text,
     'name' : IDL.Text,
     'wholesalePrice' : IDL.Float64,
     'unit' : IDL.Text,
@@ -1472,6 +1491,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'approveReturn' : IDL.Func([IDL.Text, ReturnBillId], [ReturnBill], []),
     'cancelBill' : IDL.Func([BillId], [IDL.Bool], []),
+    'checkIfBlocked' : IDL.Func([], [IDL.Bool], ['query']),
     'createBill' : IDL.Func([IDL.Text, CreateBillInput], [Bill], []),
     'createOrUpdateCustomer' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Text],
@@ -1547,6 +1567,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Opt(SmartDefaultCharges)],
         ['query'],
       ),
+    'getFastMovingProducts' : IDL.Func(
+        [IDL.Text, IDL.Nat],
+        [IDL.Vec(TopProduct)],
+        [],
+      ),
     'getLastNPurchasesForProduct' : IDL.Func(
         [IDL.Text, IDL.Nat, IDL.Nat],
         [IDL.Vec(SupplierPurchaseWithName)],
@@ -1598,6 +1623,12 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getShopStaff' : IDL.Func([IDL.Text], [IDL.Vec(StaffMember)], []),
+    'getSlowMovingProducts' : IDL.Func(
+        [IDL.Text, IDL.Nat],
+        [IDL.Vec(TopProduct)],
+        [],
+      ),
+    'getStockValue' : IDL.Func([IDL.Text], [IDL.Float64], []),
     'getSupplier' : IDL.Func([SupplierId], [IDL.Opt(Supplier)], ['query']),
     'getTopProducts' : IDL.Func(
         [IDL.Text, AnalyticsPeriod, IDL.Nat],
@@ -1637,6 +1668,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Text],
         [IDL.Vec(Supplier)],
         ['query'],
+      ),
+    'loginCheck' : IDL.Func(
+        [],
+        [IDL.Variant({ 'ok' : IDL.Null, 'blocked' : IDL.Null })],
+        [],
       ),
     'recordPayment' : IDL.Func([IDL.Text, BillId, IDL.Float64], [Bill], []),
     'recordReminderSent' : IDL.Func([IDL.Text, BillId], [], []),

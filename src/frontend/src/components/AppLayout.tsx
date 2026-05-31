@@ -15,6 +15,7 @@ import {
   Receipt,
   Settings,
   Shield,
+  ShoppingCart,
   Trash2,
   UserCircle,
   X,
@@ -93,6 +94,12 @@ const NAV_ITEMS: NavItemWithRole[] = [
     ownerOnly: true,
   },
   { id: "newBill", label: "newBill", icon: Receipt, route: "/billing" },
+  {
+    id: "bulkSell",
+    label: "Bulk Sell",
+    icon: ShoppingCart,
+    route: "/bulk-sell",
+  },
   { id: "billHistory", label: "billHistory", icon: History, route: "/history" },
   {
     id: "customers",

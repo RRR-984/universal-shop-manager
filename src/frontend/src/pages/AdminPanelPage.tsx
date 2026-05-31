@@ -38,7 +38,10 @@ import {
 } from "../components/ui/dialog";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
-import { useSuperAdmin } from "../context/SuperAdminContext";
+import {
+  resetSuperAdminCache,
+  useSuperAdmin,
+} from "../context/SuperAdminContext";
 import { useApi } from "../lib/api";
 import { formatCurrency } from "../lib/currency";
 import { useStore } from "../lib/store";
@@ -1013,7 +1016,7 @@ export function AdminPanelPage() {
   const { actor } = useActor<backendInterface>(createActor);
   const { shopConfig } = useStore();
 
-  const { isSuperAdmin, isChecking } = useSuperAdmin();
+  const { isSuperAdmin, isChecking, isHydrated } = useSuperAdmin();
 
   const [authState, setAuthState] = useState<
     "checking" | "authorized" | "denied"
@@ -1035,9 +1038,14 @@ export function AdminPanelPage() {
   const initDone = useRef(false);
 
   useEffect(() => {
-    if (isChecking) return;
-    setAuthState(isSuperAdmin ? "authorized" : "denied");
-  }, [isChecking, isSuperAdmin]);
+    if (!isHydrated || isChecking) return;
+    if (!isSuperAdmin) {
+      resetSuperAdminCache();
+      void navigate({ to: "/dashboard" });
+    } else {
+      setAuthState("authorized");
+    }
+  }, [isSuperAdmin, isChecking, isHydrated, navigate]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: actor change must reset initDone guard
   useEffect(() => {

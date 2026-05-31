@@ -43,6 +43,21 @@ mixin (
     AdminLib.recordLogin(adminState, caller.toText(), shopName, shopType);
   };
 
+  // ── Login check — call after auth to detect blocked status ────────────────
+  // Returns #ok if the caller is allowed to use the app, #blocked if blocked.
+  public shared ({ caller }) func loginCheck() : async { #ok; #blocked } {
+    if (AdminLib.isBlocked(adminState, caller.toText())) {
+      #blocked;
+    } else {
+      #ok;
+    };
+  };
+
+  // ── Blocked status query (callable from frontend on every session) ─────────
+  public shared query ({ caller }) func checkIfBlocked() : async Bool {
+    AdminLib.isBlocked(adminState, caller.toText());
+  };
+
   // ── Admin-only: user queries ───────────────────────────────────────────────
   public shared ({ caller }) func getAllUsers() : async { #ok : [ATypes.UserView]; #err : Text } {
     AdminLib.ensureAdmin(adminState, caller.toText());

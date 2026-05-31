@@ -16,7 +16,6 @@ import SupplierLib "lib/supplier";
 import SupplierApi "mixins/supplier-api";
 import ReturnLib "lib/return";
 import ReturnApi "mixins/return-api";
-import Migration "migration";
 
 
 
@@ -41,7 +40,8 @@ import Migration "migration";
 
 
 
-(with migration = Migration.run)
+
+
 actor {
   // ── State ───────────────────────────────────────────────────────────────────
   let productState   : ProdLib.State      = ProdLib.newState();
@@ -55,12 +55,12 @@ actor {
 
   // ── Mixins ───────────────────────────────────────────────────────────────────
   include SettingsApi(settingsState, adminState, rolesState);
-  include ProductApi(productState, settingsState);
-  include BillApi(billState, productState, settingsState, rolesState);
+  include ProductApi(productState, settingsState, rolesState, adminState);
+  include BillApi(billState, productState, settingsState, rolesState, adminState);
   include JewelryRatesApi(ratesState);
   include AdminApi(adminState, rolesState, productState, billState, supplierState, returnState);
   include RolesApi(rolesState);
   include CustomersApi(rolesState, billState);
-  include SupplierApi(supplierState);
-  include ReturnApi(returnState, billState, productState, rolesState, settingsState);
+  include SupplierApi(supplierState, adminState);
+  include ReturnApi(returnState, billState, productState, rolesState, settingsState, adminState);
 };

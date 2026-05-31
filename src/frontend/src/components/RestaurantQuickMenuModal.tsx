@@ -1,5 +1,7 @@
+import { Pencil, X } from "lucide-react";
 import React, { useState } from "react";
 import { RestaurantCategory, type ShopType } from "../backend";
+import type { ProductView, UpdateProductInput } from "../backend";
 import { useApi } from "../lib/api";
 
 interface QuickMenuItem {
@@ -98,6 +100,16 @@ export interface RestaurantQuickMenuModalProps {
   shopType: ShopType;
   onClose: () => void;
   onProductsAdded: () => void;
+  products?: ProductView[];
+  onUpdateProduct?: (input: UpdateProductInput) => Promise<void>;
+}
+
+interface EditState {
+  name: string;
+  price: string;
+  stock: string;
+  unit: string;
+  category: string;
 }
 
 export function RestaurantQuickMenuModal({
@@ -105,8 +117,11 @@ export function RestaurantQuickMenuModal({
   shopType,
   onClose,
   onProductsAdded,
+  products,
+  onUpdateProduct,
 }: RestaurantQuickMenuModalProps) {
   const { createProduct } = useApi();
+  const [activeTab, setActiveTab] = useState<"add" | "edit">("add");
   const [activeCategory, setActiveCategory] = useState(0);
   const [selectedItems, setSelectedItems] = useState<
     Record<string, SelectedItem>
@@ -115,6 +130,12 @@ export function RestaurantQuickMenuModal({
   const [savedCount, setSavedCount] = useState(0);
   const [priceErrors, setPriceErrors] = useState<Record<string, boolean>>({});
   const [stockErrors, setStockErrors] = useState<Record<string, boolean>>({});
+  // Edit Menu tab state
+  const [editSearch, setEditSearch] = useState("");
+  const [expandedId, setExpandedId] = useState<bigint | null>(null);
+  const [editState, setEditState] = useState<EditState | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const currentCategory = QUICK_MENU_CATEGORIES[activeCategory];
   const itemKey = (item: QuickMenuItem) =>
@@ -235,6 +256,57 @@ export function RestaurantQuickMenuModal({
     setTimeout(onClose, 900);
   };
 
+  const filteredProducts = (products ?? []).filter((p) =>
+    p.name.toLowerCase().includes(editSearch.toLowerCase()),
+  );
+
+  const handleEditOpen = (p: ProductView) => {
+    setExpandedId(p.id);
+    setEditState({
+      name: p.name,
+      price: String(p.retailPrice),
+      stock: String(p.stock),
+      unit: p.unit,
+      category: p.category,
+    });
+    setEditError(null);
+  };
+
+  const handleEditCancel = () => {
+    setExpandedId(null);
+    setEditState(null);
+    setEditError(null);
+  };
+
+  const handleEditSave = async (p: ProductView) => {
+    if (!editState || !onUpdateProduct) return;
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      await onUpdateProduct({
+        id: p.id,
+        shopId: p.shopId,
+        name: editState.name,
+        retailPrice: Number.parseFloat(editState.price) || 0,
+        wholesalePrice: p.wholesalePrice,
+        costPrice: p.costPrice,
+        unit: editState.unit,
+        category: editState.category,
+        stock: Number.parseInt(editState.stock) || 0,
+        minStock: p.minStock,
+        isActive: p.isActive,
+        engineFields: p.engineFields,
+        barcode: p.barcode,
+      });
+      setExpandedId(null);
+      setEditState(null);
+    } catch (_e) {
+      setEditError("Save failed. Please try again.");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-2 sm:p-4 overflow-y-auto">
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg my-4">
@@ -254,7 +326,266 @@ export function RestaurantQuickMenuModal({
             &times;
           </button>
         </div>
-        {savedCount > 0 ? (
+
+        {/* Tab Switcher */}
+        <div className="flex border-b border-gray-200">
+          <button
+            type="button"
+            data-ocid="quickmenu.add_tab"
+            onClick={() => setActiveTab("add")}
+            className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === "add"
+                ? "border-b-2 border-indigo-600 text-indigo-600"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Add Items
+          </button>
+          <button
+            type="button"
+            data-ocid="quickmenu.edit_tab"
+            onClick={() => setActiveTab("edit")}
+            className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === "edit"
+                ? "border-b-2 border-indigo-600 text-indigo-600"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Edit Menu
+          </button>
+        </div>
+
+        {/* Edit Menu Tab */}
+        {activeTab === "edit" ? (
+          <div className="p-3">
+            <input
+              type="text"
+              data-ocid="quickmenu.edit_search_input"
+              placeholder="Search items..."
+              value={editSearch}
+              onChange={(e) => setEditSearch(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg mb-3 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+            />
+            {filteredProducts.length === 0 ? (
+              <p
+                className="text-center text-sm text-gray-400 py-6"
+                data-ocid="quickmenu.edit_empty_state"
+              >
+                {(products ?? []).length === 0
+                  ? "No products added yet"
+                  : "No matching items found"}
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+                {filteredProducts.map((p) => (
+                  <div
+                    key={p.id}
+                    data-ocid={`quickmenu.edit_item.${p.id}`}
+                    className="border border-gray-200 rounded-lg overflow-hidden"
+                  >
+                    {/* Product row */}
+                    <div className="flex items-center gap-2 px-3 py-2.5">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">
+                          {p.name}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          ₹{p.retailPrice} · Stock: {p.stock} · {p.unit}
+                          {p.category ? ` · ${p.category}` : ""}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        data-ocid={`quickmenu.edit_button.${p.id}`}
+                        onClick={() =>
+                          expandedId === p.id
+                            ? handleEditCancel()
+                            : handleEditOpen(p)
+                        }
+                        className="p-1.5 rounded-md text-indigo-600 hover:bg-indigo-50 flex-shrink-0"
+                        aria-label="Edit"
+                      >
+                        {expandedId === p.id ? (
+                          <X className="w-4 h-4" />
+                        ) : (
+                          <Pencil className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Inline edit form */}
+                    {expandedId === p.id && editState && (
+                      <div className="border-t border-gray-100 bg-gray-50 px-3 py-3 space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="col-span-2">
+                            <label
+                              htmlFor={`edit-name-${p.id}`}
+                              className="text-xs text-gray-500 mb-0.5 block"
+                            >
+                              Name
+                            </label>
+                            <input
+                              id={`edit-name-${p.id}`}
+                              type="text"
+                              data-ocid={`quickmenu.edit_name_input.${p.id}`}
+                              value={editState.name}
+                              onChange={(e) =>
+                                setEditState((s) =>
+                                  s ? { ...s, name: e.target.value } : s,
+                                )
+                              }
+                              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                            />
+                          </div>
+                          <div>
+                            <label
+                              htmlFor={`edit-price-${p.id}`}
+                              className="text-xs text-gray-500 mb-0.5 block"
+                            >
+                              Price
+                            </label>
+                            <input
+                              id={`edit-price-${p.id}`}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              data-ocid={`quickmenu.edit_price_input.${p.id}`}
+                              value={editState.price}
+                              onChange={(e) =>
+                                setEditState((s) =>
+                                  s ? { ...s, price: e.target.value } : s,
+                                )
+                              }
+                              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                            />
+                          </div>
+                          <div>
+                            <label
+                              htmlFor={`edit-stock-${p.id}`}
+                              className="text-xs text-gray-500 mb-0.5 block"
+                            >
+                              Stock
+                            </label>
+                            <input
+                              id={`edit-stock-${p.id}`}
+                              type="number"
+                              min="0"
+                              step="1"
+                              data-ocid={`quickmenu.edit_stock_input.${p.id}`}
+                              value={editState.stock}
+                              onChange={(e) =>
+                                setEditState((s) =>
+                                  s ? { ...s, stock: e.target.value } : s,
+                                )
+                              }
+                              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                            />
+                          </div>
+                          <div>
+                            <label
+                              htmlFor={`edit-unit-${p.id}`}
+                              className="text-xs text-gray-500 mb-0.5 block"
+                            >
+                              Unit
+                            </label>
+                            <input
+                              id={`edit-unit-${p.id}`}
+                              type="text"
+                              data-ocid={`quickmenu.edit_unit_input.${p.id}`}
+                              value={editState.unit}
+                              onChange={(e) =>
+                                setEditState((s) =>
+                                  s ? { ...s, unit: e.target.value } : s,
+                                )
+                              }
+                              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                            />
+                          </div>
+                          <div>
+                            <label
+                              htmlFor={`edit-category-${p.id}`}
+                              className="text-xs text-gray-500 mb-0.5 block"
+                            >
+                              Category
+                            </label>
+                            <input
+                              id={`edit-category-${p.id}`}
+                              type="text"
+                              data-ocid={`quickmenu.edit_category_input.${p.id}`}
+                              value={editState.category}
+                              onChange={(e) =>
+                                setEditState((s) =>
+                                  s ? { ...s, category: e.target.value } : s,
+                                )
+                              }
+                              className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                            />
+                          </div>
+                        </div>
+                        {editError && (
+                          <p
+                            className="text-xs text-red-500"
+                            data-ocid={`quickmenu.edit_error_state.${p.id}`}
+                          >
+                            {editError}
+                          </p>
+                        )}
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            type="button"
+                            data-ocid={`quickmenu.edit_cancel_button.${p.id}`}
+                            onClick={handleEditCancel}
+                            className="flex-1 py-1.5 rounded-lg border border-gray-300 text-gray-600 text-xs font-medium hover:bg-gray-100"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            data-ocid={`quickmenu.edit_save_button.${p.id}`}
+                            onClick={() => handleEditSave(p)}
+                            disabled={editSaving}
+                            className="flex-1 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            {editSaving ? (
+                              <span
+                                className="flex items-center justify-center gap-1"
+                                data-ocid={`quickmenu.edit_loading_state.${p.id}`}
+                              >
+                                <svg
+                                  className="animate-spin w-3 h-3"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <title>Saving</title>
+                                  <circle
+                                    className="opacity-25"
+                                    cx="12"
+                                    cy="12"
+                                    r="10"
+                                    stroke="currentColor"
+                                    strokeWidth="4"
+                                  />
+                                  <path
+                                    className="opacity-75"
+                                    fill="currentColor"
+                                    d="M4 12a8 8 0 018-8v8H4z"
+                                  />
+                                </svg>
+                                Saving...
+                              </span>
+                            ) : (
+                              "Save"
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : savedCount > 0 ? (
           <div className="p-8 text-center">
             <div className="text-4xl mb-2 text-green-500">&#10003;</div>
             <p className="text-green-600 font-semibold text-lg">

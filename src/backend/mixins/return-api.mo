@@ -6,6 +6,8 @@ import BillLib     "../lib/bill";
 import RolesLib    "../lib/roles";
 import Runtime     "mo:core/Runtime";
 import Time        "mo:core/Time";
+import Text "mo:core/Text";
+import AdminLib "../lib/admin";
 
 mixin (
   returnState  : ReturnLib.State,
@@ -13,13 +15,16 @@ mixin (
   prodState    : ProdLib.State,
   rolesState   : RolesLib.State,
   settingsState : { var config : ?Types.ShopConfig },
+  adminState   : AdminLib.State,
 ) {
-  // ── Create a return request (owner-only) ─────────────────────────────────────
+  // ── Create a return request (owner and staff) ────────────────────────────────
   /// Validates items exist in original bill, creates a ReturnBill with #Pending status.
   public shared ({ caller }) func createReturn(
     shopId : Text,
     input  : ReturnTypes.CreateReturnInput,
   ) : async ReturnTypes.ReturnBill {
+    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
+    if (shopId.size() == 0) Runtime.trap("shopId must not be empty");
     // Owner and staff can initiate returns on behalf of customers
     let originalBill = switch (BillLib.getBill(billState, input.originalBillId)) {
       case null { Runtime.trap("Original bill not found") };
@@ -38,6 +43,7 @@ mixin (
     shopId       : Text,
     returnBillId : ReturnTypes.ReturnBillId,
   ) : async ReturnTypes.ReturnBill {
+    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     RolesLib.ensureOwner(rolesState, shopId, caller);
     let now = Time.now();
     let approved = switch (returnState.approveReturn(returnBillId, now)) {
@@ -57,6 +63,7 @@ mixin (
     shopId : Text,
     input  : ReturnTypes.RejectReturnInput,
   ) : async ReturnTypes.ReturnBill {
+    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     RolesLib.ensureOwner(rolesState, shopId, caller);
     switch (returnState.rejectReturn(input)) {
       case null { Runtime.trap("Return bill not found") };
@@ -97,6 +104,7 @@ mixin (
     shopId : Text,
     input  : ReturnTypes.ApplyStoreCreditInput,
   ) : async ReturnTypes.CustomerCredit {
+    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     RolesLib.ensureOwner(rolesState, shopId, caller);
     let now = Time.now();
     switch (returnState.applyStoreCredit(shopId, input, now)) {

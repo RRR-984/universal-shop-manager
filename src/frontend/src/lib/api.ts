@@ -199,6 +199,30 @@ export function useApi() {
     [actor],
   );
 
+  const getStockValue = useCallback(
+    async (shopId: string): Promise<number> => {
+      if (!actor) return 0;
+      return actor.getStockValue(shopId);
+    },
+    [actor],
+  );
+
+  const getFastMovingProducts = useCallback(
+    async (shopId: string, limit: bigint): Promise<TopProduct[]> => {
+      if (!actor) return [];
+      return actor.getFastMovingProducts(shopId, limit);
+    },
+    [actor],
+  );
+
+  const getSlowMovingProducts = useCallback(
+    async (shopId: string, limit: bigint): Promise<TopProduct[]> => {
+      if (!actor) return [];
+      return actor.getSlowMovingProducts(shopId, limit);
+    },
+    [actor],
+  );
+
   // Shop Config
 
   const getShopConfig = useCallback(async (): Promise<ShopConfig | null> => {
@@ -224,8 +248,6 @@ export function useApi() {
           })
           .catch((err: unknown) => {
             clearTimeout(timer);
-            // Log but DO NOT rethrow — callers treat undefined/throw as graceful failure.
-            console.warn("[api] saveShopConfig failed:", err);
             reject(err);
           });
       });
@@ -275,6 +297,20 @@ export function useApi() {
     },
     [actor],
   );
+
+  const checkIfBlocked = useCallback(async (): Promise<boolean> => {
+    if (!actor) return false;
+    try {
+      const a = actor as any;
+      if (typeof a.checkIfBlocked === "function") {
+        const result = await a.checkIfBlocked();
+        return !!result;
+      }
+    } catch {
+      // ignore errors, fail open
+    }
+    return false;
+  }, [actor]);
 
   const initAdmin = useCallback(async (): Promise<boolean> => {
     if (!actor) return false;
@@ -489,7 +525,7 @@ export function useApi() {
 
   const listSuppliersByShop = useCallback(
     async (shopId: string): Promise<Supplier[]> => {
-      if (!actor) return [];
+      if (!actor) throw new Error("Actor not ready");
       return actor.listSuppliersByShop(shopId);
     },
     [actor],
@@ -739,6 +775,9 @@ export function useApi() {
       cancelBill,
       getSalesSummary,
       getTopProducts,
+      getStockValue,
+      getFastMovingProducts,
+      getSlowMovingProducts,
       getShopConfig,
       saveShopConfig,
       updateShopConfig,
@@ -779,6 +818,7 @@ export function useApi() {
       createSupplierPurchase,
       listPurchasesByProduct,
       getLastNPurchasesForProduct,
+      checkIfBlocked,
     }),
     [
       ready,
@@ -807,6 +847,9 @@ export function useApi() {
       cancelBill,
       getSalesSummary,
       getTopProducts,
+      getStockValue,
+      getFastMovingProducts,
+      getSlowMovingProducts,
       getShopConfig,
       saveShopConfig,
       updateShopConfig,
@@ -847,6 +890,7 @@ export function useApi() {
       createSupplierPurchase,
       listPurchasesByProduct,
       getLastNPurchasesForProduct,
+      checkIfBlocked,
     ],
   );
 }

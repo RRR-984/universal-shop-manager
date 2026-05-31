@@ -105,7 +105,9 @@ export const useStore = create<StoreState & StoreActions>()(
           return {
             shopConfig: config,
             activeShopId,
-            isSetupComplete: config.isSetupComplete,
+            // Never downgrade isSetupComplete from true→false
+            isSetupComplete:
+              state.isSetupComplete || (config.isSetupComplete ?? false),
             language: config.language,
             shops,
             selectedShopIds,
@@ -114,7 +116,6 @@ export const useStore = create<StoreState & StoreActions>()(
       },
 
       setIsSetupComplete: (val) => {
-        console.log("[AUTH] setIsSetupComplete called with:", val);
         set({ isSetupComplete: val });
       },
       setIsLoading: (val) => set({ isLoading: val }),
@@ -213,10 +214,7 @@ export const useStore = create<StoreState & StoreActions>()(
       setActiveShop: (id) => {
         const { shops } = get();
         const shop = shops.find((s) => s.id === id);
-        if (!shop) {
-          console.warn(`[store] setActiveShop: shop id "${id}" not found`);
-          return;
-        }
+        if (!shop) return;
         setLanguage(shop.language);
         set({
           shopConfig: shop,
@@ -243,10 +241,7 @@ export const useStore = create<StoreState & StoreActions>()(
                 s.id === targetId ? { ...s, ...config } : s,
               );
             } else {
-              // ID not found — fall back to name match, log warning
-              console.warn(
-                `[store] syncActiveShopFromBackend: activeShopId "${targetId}" not in shops array, falling back to name match`,
-              );
+              // ID not found — fall back to name match, then first shop
               const fallbackIdx = shops.findIndex(
                 (s) =>
                   s.shopName === config.shopName &&
@@ -254,6 +249,11 @@ export const useStore = create<StoreState & StoreActions>()(
               );
               if (fallbackIdx !== -1) {
                 activeShopId = shops[fallbackIdx].id;
+              } else if (shops.length > 0) {
+                // Last resort: activate first shop so activeShopId is never empty
+                activeShopId = shops[0].id;
+              }
+              if (activeShopId) {
                 shops = shops.map((s) =>
                   s.id === activeShopId ? { ...s, ...config } : s,
                 );
@@ -265,17 +265,23 @@ export const useStore = create<StoreState & StoreActions>()(
             shops = [newShop];
             activeShopId = newShop.id;
           } else if (shops.length > 0 && !targetId) {
-            // activeShopId not yet set — activate first shop whose name matches
-            const match = shops.find(
-              (s) =>
-                s.shopName === config.shopName && s.country === config.country,
+            // activeShopId not yet set — activate first shop whose name matches,
+            // or fall back to the first shop so activeShopId is never empty
+            const match =
+              shops.find(
+                (s) =>
+                  s.shopName === config.shopName &&
+                  s.country === config.country,
+              ) ?? shops[0];
+            activeShopId = match.id;
+            shops = shops.map((s) =>
+              s.id === activeShopId ? { ...s, ...config } : s,
             );
-            if (match) {
-              activeShopId = match.id;
-              shops = shops.map((s) =>
-                s.id === activeShopId ? { ...s, ...config } : s,
-              );
-            }
+          }
+
+          // Safety fallback: if activeShopId is still null but shops exist, use first shop
+          if (!activeShopId && shops.length > 0) {
+            activeShopId = shops[0].id;
           }
 
           const activeShop = activeShopId

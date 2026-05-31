@@ -1,5 +1,4 @@
-import type { backendInterface } from "../backend";
-import {
+import { 
   AnalyticsPeriod,
   BillStatus,
   DateFormat,
@@ -10,7 +9,9 @@ import {
   ReturnStatus,
   ShopType,
   TaxSystem,
-} from "../backend";
+  Variant_ok_blocked,
+ } from "../backend";
+import type { backendInterface } from "../backend";
 
 export const mockBackend: backendInterface = {
   isSetupComplete: async () => true,
@@ -59,6 +60,19 @@ export const mockBackend: backendInterface = {
   getNearExpiryProducts: async (_shopId: string) => [],
   getNearExpiryProductsByDays: async (_shopId: string, _days: bigint) => [],
   getDeadStockProducts: async (_shopId: string, _days: bigint) => [],
+
+  getStockValue: async (_shopId: string) => 450000,
+
+  getFastMovingProducts: async (_shopId: string, _limit: bigint) => [
+    { productId: BigInt(4), name: "Redmi Note 13 Pro 128GB", totalQty: 22, revenue: 66000, profit: 11000 },
+    { productId: BigInt(1), name: "iPhone 15 Pro 256GB Black", totalQty: 12, revenue: 180000, profit: 36000 },
+    { productId: BigInt(3), name: "OnePlus 12 256GB Green", totalQty: 15, revenue: 90000, profit: 18000 },
+  ],
+
+  getSlowMovingProducts: async (_shopId: string, _limit: bigint) => [
+    { productId: BigInt(6), name: "Motorola Edge 40 Pro", totalQty: 1, revenue: 34999, profit: 5000 },
+    { productId: BigInt(8), name: "Nokia G42 5G 128GB", totalQty: 2, revenue: 20000, profit: 3000 },
+  ],
 
   listProducts: async (filter) => [
     {
@@ -311,6 +325,8 @@ export const mockBackend: backendInterface = {
   adminDeleteShop: async () => ({ __kind__: "ok" as const, ok: null }),
   adminDeleteUser: async () => ({ __kind__: "ok" as const, ok: null }),
   adminBlockUser: async () => ({ __kind__: "ok" as const, ok: null }),
+  checkIfBlocked: async () => false,
+  loginCheck: async () => Variant_ok_blocked.ok,
 
   // Staff methods
   addStaff: async (_shopId, _staffPrincipal) => ({ __kind__: "ok" as const, ok: null }),
