@@ -2206,6 +2206,7 @@ export function BulkEntryPage() {
   const navigate = useNavigate();
   const { createProduct, getDefaultCharges, ready } = useApi();
   const shopConfig = useStore((s) => s.shopConfig);
+  const activeShopId = useStore((s) => s.activeShopId);
 
   const shopType:
     | ShopType
@@ -2387,7 +2388,7 @@ export function BulkEntryPage() {
           shopType,
           row,
           backendShopType,
-          shopConfig?.shopName ?? "",
+          activeShopId ?? shopConfig?.shopName ?? "",
         );
         await createProduct(input);
         results.push({ rowIdx: i, success: true });
@@ -2410,7 +2411,15 @@ export function BulkEntryPage() {
     } else {
       toast.warning(`${succeeded} saved, ${failed} failed — check rows below`);
     }
-  }, [rows, shopType, backendShopType, ready, createProduct, shopConfig]);
+  }, [
+    rows,
+    shopType,
+    backendShopType,
+    ready,
+    createProduct,
+    shopConfig,
+    activeShopId,
+  ]);
 
   const extraHeaders = getExtraHeaders(shopType);
 

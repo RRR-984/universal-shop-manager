@@ -14,7 +14,6 @@ import {
   Plus,
   Receipt,
   Settings,
-  Shield,
   ShoppingCart,
   Trash2,
   UserCircle,
@@ -24,10 +23,6 @@ import { useEffect, useRef, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import {
-  resetSuperAdminCache,
-  useSuperAdmin,
-} from "../context/SuperAdminContext";
 import { isRTL, t } from "../lib/i18n";
 import { useStore } from "../lib/store";
 import { cn } from "../lib/utils";
@@ -69,14 +64,6 @@ type NavItem = {
 
 // Nav items with ownerOnly flag
 type NavItemWithRole = NavItem & { ownerOnly?: boolean };
-
-const ADMIN_NAV_ITEM_BASE: NavItemWithRole = {
-  id: "admin",
-  label: "admin" as Parameters<typeof t>[0],
-  icon: Shield,
-  route: "/admin",
-  ownerOnly: true,
-};
 
 const NAV_ITEMS: NavItemWithRole[] = [
   {
@@ -442,29 +429,6 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { clear: logout } = useInternetIdentity();
   const { reset } = useStore();
 
-  // ── Super Admin — belt-and-suspenders: context OR localStorage ───────────
-  // localAdminFlag uses useState initializer so it's set synchronously on
-  // first render and is reactive to future updates via the effect below.
-  // This eliminates the flash-of-hidden that caused the 20+ version bug.
-  const { isSuperAdmin } = useSuperAdmin();
-  const [localAdminFlag, setLocalAdminFlag] = useState<boolean>(
-    () => localStorage.getItem("usm-super-admin-v1") === "1",
-  );
-
-  // Keep localAdminFlag in sync when localStorage is written by the context
-  useEffect(() => {
-    const stored = localStorage.getItem("usm-super-admin-v1") === "1";
-    if (stored !== localAdminFlag) {
-      setLocalAdminFlag(stored);
-    }
-    // Re-check whenever isSuperAdmin changes (backend confirmed result)
-    if (isSuperAdmin && !localAdminFlag) {
-      setLocalAdminFlag(true);
-    }
-  }, [isSuperAdmin, localAdminFlag]);
-
-  const showAdminLink = isSuperAdmin || localAdminFlag;
-
   // Close mobile shop selector on outside click
   useEffect(() => {
     if (!mobileShopOpen) return;
@@ -486,14 +450,12 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   const handleLogout = async () => {
-    // 1. Clear module-level super-admin cache so it re-evaluates on next login
-    resetSuperAdminCache();
-    // 2. Reset Zustand session state BEFORE calling II logout so there is no
+    // 1. Reset Zustand session state BEFORE calling II logout so there is no
     //    window where identity is null but stale shop data is still shown
     reset();
-    // 3. Sign out of Internet Identity — this clears the identity object
+    // 2. Sign out of Internet Identity — this clears the identity object
     logout();
-    // 4. Navigate to index. RootLayout now checks identity; without an identity
+    // 3. Navigate to index. RootLayout now checks identity; without an identity
     //    the app redirects to SetupPage/login. Use replace so pressing Back
     //    doesn't bring them back into the authenticated app.
     await navigate({ to: "/", replace: true });
@@ -548,52 +510,45 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         {/* Nav Links */}
         <nav className="flex-1 py-3 overflow-y-auto">
-          {[
-            ...NAV_ITEMS.filter((item) => !item.ownerOnly || isOwner()),
-            ...(showAdminLink ? [ADMIN_NAV_ITEM_BASE] : []),
-          ].map((item) => {
-            const Icon = item.icon;
-            const isActive =
-              currentPath === item.route ||
-              (item.route !== "/dashboard" &&
-                currentPath.startsWith(item.route));
-            return (
-              <Link
-                key={item.id}
-                to={item.route}
-                data-ocid={`nav.${item.id}.link`}
-                className={cn(
-                  "flex items-center gap-3 mx-2 mb-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-smooth min-h-[44px]",
-                  collapsed ? "justify-center px-0" : "",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : item.id === "admin"
-                      ? "text-violet-500 hover:bg-violet-500/10 hover:text-violet-600 dark:text-violet-400"
+          {NAV_ITEMS.filter((item) => !item.ownerOnly || isOwner()).map(
+            (item) => {
+              const Icon = item.icon;
+              const isActive =
+                currentPath === item.route ||
+                (item.route !== "/dashboard" &&
+                  currentPath.startsWith(item.route));
+              return (
+                <Link
+                  key={item.id}
+                  to={item.route}
+                  data-ocid={`nav.${item.id}.link`}
+                  className={cn(
+                    "flex items-center gap-3 mx-2 mb-1 px-3 py-2.5 rounded-lg text-sm font-medium transition-smooth min-h-[44px]",
+                    collapsed ? "justify-center px-0" : "",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-                )}
-                title={
-                  collapsed
-                    ? item.id === "admin"
-                      ? "Super Admin"
-                      : item.id === "customers"
+                  )}
+                  title={
+                    collapsed
+                      ? item.id === "customers"
                         ? "Customers"
                         : t(item.label as Parameters<typeof t>[0])
-                    : undefined
-                }
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                {!collapsed && (
-                  <span className="truncate">
-                    {item.id === "admin"
-                      ? "Super Admin"
-                      : item.id === "customers"
+                      : undefined
+                  }
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  {!collapsed && (
+                    <span className="truncate">
+                      {item.id === "customers"
                         ? "Customers"
                         : t(item.label as Parameters<typeof t>[0])}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+                    </span>
+                  )}
+                </Link>
+              );
+            },
+          )}
         </nav>
 
         {/* Collapse Toggle */}
@@ -717,41 +672,36 @@ export function AppLayout({ children }: AppLayoutProps) {
         )}
 
         <nav className="flex-1 py-3 overflow-y-auto">
-          {[
-            ...NAV_ITEMS.filter((item) => !item.ownerOnly || isOwner()),
-            ...(showAdminLink ? [ADMIN_NAV_ITEM_BASE] : []),
-          ].map((item) => {
-            const Icon = item.icon;
-            const isActive =
-              currentPath === item.route ||
-              (item.route !== "/dashboard" &&
-                currentPath.startsWith(item.route));
-            return (
-              <Link
-                key={item.id}
-                to={item.route}
-                data-ocid={`mobile_nav.${item.id}.link`}
-                onClick={() => setMobileOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 mx-3 mb-1 px-3 py-3 rounded-lg text-sm font-medium transition-smooth min-h-[44px]",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : item.id === "admin"
-                      ? "text-primary/70 hover:bg-primary/10 hover:text-primary"
+          {NAV_ITEMS.filter((item) => !item.ownerOnly || isOwner()).map(
+            (item) => {
+              const Icon = item.icon;
+              const isActive =
+                currentPath === item.route ||
+                (item.route !== "/dashboard" &&
+                  currentPath.startsWith(item.route));
+              return (
+                <Link
+                  key={item.id}
+                  to={item.route}
+                  data-ocid={`mobile_nav.${item.id}.link`}
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 mx-3 mb-1 px-3 py-3 rounded-lg text-sm font-medium transition-smooth min-h-[44px]",
+                    isActive
+                      ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-                )}
-              >
-                <Icon className="w-5 h-5 flex-shrink-0" />
-                <span>
-                  {item.id === "admin"
-                    ? "Super Admin"
-                    : item.id === "customers"
+                  )}
+                >
+                  <Icon className="w-5 h-5 flex-shrink-0" />
+                  <span>
+                    {item.id === "customers"
                       ? "Customers"
                       : t(item.label as Parameters<typeof t>[0])}
-                </span>
-              </Link>
-            );
-          })}
+                  </span>
+                </Link>
+              );
+            },
+          )}
         </nav>
 
         {/* Mobile Drawer Logout */}

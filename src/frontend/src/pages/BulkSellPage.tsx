@@ -268,7 +268,7 @@ export function BulkSellPage() {
             ),
           );
         } catch {
-          // search errors are silent — UI shows no results
+          toast.error("Could not load products. Please try again.");
         }
       }, 200);
     },

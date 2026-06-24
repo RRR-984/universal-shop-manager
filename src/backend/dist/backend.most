@@ -1,13 +1,4 @@
 // Version: 1.0.0
-type AdminNote__602743910 =
-  {
-    content : Text;
-    createdAt : Int;
-    var isDeleted : Bool;
-    noteId : Nat;
-    targetPrincipal : Text;
-    var updatedAt : ?Int
-  };
 type AgroProductsFields__937348597 =
   {
     batchNumber : ?Text;
@@ -114,8 +105,8 @@ type Customer__778013411 =
     totalBills : Nat;
     totalSpent : Float
   };
-type Data__791452850<K, V> =
-  {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type Data__80296667<K, V> =
+  {var count : Nat__1040412405; kvs : [var ?(K, V)]};
 type DateFormat__443006287 = {#DDMMYYYY; #MMDDYYYY};
 type ElectricalFields__85427857 =
   {
@@ -184,8 +175,8 @@ type GeneralFields__945393275 = {expiryDate : ?Text};
 type GroceryFields__889099055 =
   {decimalQtyEnabled : Bool; expiryDate : ?Text};
 type HardwareFields__1059729771 = {expiryDate : ?Text; sku : Text};
-type Internal__8484328<K, V> =
-  {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
+type Internal__41346355<K, V> =
+  {children : [var ?Node__1000929467<K, V>]; data : Data__80296667<K, V>};
 type JewelryFields__527644622 =
   {
     expiryDate : ?Text;
@@ -208,18 +199,18 @@ type Language__22065978 =
     #Swahili;
     #Urdu
   };
-type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
-type List__415060402<T> = List__790383201<T>;
-type List__790383201<T> =
+type Leaf__712614010<K, V> = {data : Data__80296667<K, V>};
+type List__529703492<T> =
   {
-    var blockIndex : Nat__490723111;
+    var blockIndex : Nat__1040412405;
     var blocks : [var [var ?T]];
-    var elementIndex : Nat__490723111
+    var elementIndex : Nat__1040412405
   };
-type Map__158565046<K, V> = Map__297112838<K, V>;
-type Map__297112838<K, V> =
-  {var root : Node__46230540<K, V>; var size : Nat__490723111};
-type Map__605269027<K, V> = Map__158565046<K, V>;
+type List__560604548<T> = List__529703492<T>;
+type Map__222667396<K, V> = Map__912772452<K, V>;
+type Map__709709801<K, V> =
+  {var root : Node__1000929467<K, V>; var size : Nat__1040412405};
+type Map__912772452<K, V> = Map__709709801<K, V>;
 type MedicalFields__504033530 =
   {
     batchNo : Text;
@@ -247,10 +238,10 @@ type MobileFields__1063854217 =
     storage : Text;
     warrantyMonths : Nat
   };
-type Nat__490723111 = Nat__920180692;
+type Nat__1040412405 = Nat__920180692;
 type Nat__920180692 = Nat;
-type Node__46230540<K, V> =
-  {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type Node__1000929467<K, V> =
+  {#internal : Internal__41346355<K, V>; #leaf : Leaf__712614010<K, V>};
 type NumberFormat__189214880 = {#Indian; #International};
 type PackType__1058895741 = {#Bottle; #Other; #Strip; #Tablet};
 type PaymentType__668863806 = {#full; #partial};
@@ -358,6 +349,15 @@ type SmartDefaultCharges__537954530 =
     defaultOtherCharge : ?Text;
     defaultTransportCharge : ?Text
   };
+type StaffInvite__136512392 =
+  {
+    createdAt : Int;
+    expiresAt : Int;
+    shopId : Text;
+    token : Text;
+    used : Bool;
+    usedBy : ?Principal
+  };
 type StaffMember__584203798 =
   {addedAt : Int; principal : Principal; role : ShopRole__733006212};
 type StationeryFields__967019336 =
@@ -402,35 +402,15 @@ type Supplier__936068473 =
 type TaxBreakdown__935917889 = {cgst : Float; igst : Float; sgst : Float};
 type TaxSystem__952149175 = {#GST; #Generic; #SalesTax; #VAT};
 type Timestamp__301639476 = Int;
-type UserRecord__412821149 =
-  {
-    firstSeen : Int;
-    var isActive : Bool;
-    var isBlocked : Bool;
-    var lastSeen : Int;
-    var loginCount : Nat;
-    principal : Text;
-    shopName : Text;
-    shopType : Text
-  };
 actor {
-  stable adminState :
-    {
-      var adminPrincipal : ?Text;
-      globalShops : Map__605269027<Text, ShopConfig__128074734>;
-      var nextNoteId : Nat;
-      notes : List__415060402<AdminNote__602743910>;
-      shopDisabled : Map__605269027<Text, Bool>;
-      users : Map__605269027<Text, UserRecord__412821149>
-    };
   stable billState :
     {
-      bills : List__415060402<Bill__553422546>;
+      bills : List__560604548<Bill__553422546>;
       var nextBillNumber : Nat;
       var nextId : Nat
     };
   stable productState :
-    {var nextId : Nat; products : List__415060402<Product__110260450>};
+    {var nextId : Nat; products : List__560604548<Product__110260450>};
   stable ratesState :
     {
       var available : Bool;
@@ -440,25 +420,31 @@ actor {
     };
   stable returnState :
     {
-      credits : Map__605269027<Text, CustomerCredit__625537921>;
+      credits : Map__222667396<Text, CustomerCredit__625537921>;
       returns :
-        Map__605269027<ReturnBillId__311506537, ReturnBill__685023167>;
+        Map__222667396<ReturnBillId__311506537, ReturnBill__685023167>;
       state : {var nextReturnId : Nat; var nextTxId : Nat}
     };
   stable rolesState :
     {
-      customers : Map__605269027<Text, List__415060402<Customer__778013411>>;
-      nextCustomerId : Map__605269027<Text, Nat>;
-      shopOwners : Map__605269027<Text, Principal>;
+      customers : Map__222667396<Text, List__560604548<Customer__778013411>>;
+      nextCustomerId : Map__222667396<Text, Nat>;
+      shopOwners : Map__222667396<Text, Principal>;
       shopStaff :
-        Map__605269027<Text, List__415060402<StaffMember__584203798>>
+        Map__222667396<Text, List__560604548<StaffMember__584203798>>
     };
-  stable settingsState : {var config : ?ShopConfig__128074734};
+  stable settingsState :
+    {
+      var config : ?ShopConfig__128074734;
+      shopsByPrincipal : Map__222667396<Text, Nat>
+    };
+  stable staffInviteState :
+    {staffInvites : Map__222667396<Text, StaffInvite__136512392>};
   stable supplierState :
     {
       var nextPurchId : Nat;
       var nextSuppId : Nat;
-      supplierPurchases : List__415060402<SupplierPurchase__125675658>;
-      suppliers : List__415060402<Supplier__936068473>
+      supplierPurchases : List__560604548<SupplierPurchase__125675658>;
+      suppliers : List__560604548<Supplier__936068473>
     }
 };

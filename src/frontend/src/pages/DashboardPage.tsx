@@ -1240,7 +1240,9 @@ export function DashboardPage() {
                 }
                 sublabel={`${profitMarginPct}% margin`}
                 icon={<TrendingDown className="w-4.5 h-4.5" />}
-                accent="green"
+                accent={
+                  summary && summary.totalProfit < 0 ? "neutral" : "green"
+                }
                 tooltip="Selling price minus cost price"
               />
             ) : (

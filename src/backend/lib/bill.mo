@@ -60,7 +60,12 @@ module {
     );
     let grandTotal = subtotal + totalTax + extraChargesTotal - input.billDiscount;
 
-    let taxBreakdown = calcTaxBreakdown(taxSystem, taxRate, subtotal);
+    // When tax is off (taxRate == 0), zero out the breakdown unconditionally
+    let taxBreakdown : Types.TaxBreakdown = if (taxRate == 0.0) {
+      { cgst = 0.0; sgst = 0.0; igst = 0.0 };
+    } else {
+      calcTaxBreakdown(taxSystem, taxRate, subtotal);
+    };
 
     let amountPending = if (input.paymentType == #full) 0.0 else {
       let pending = grandTotal - input.amountPaid;

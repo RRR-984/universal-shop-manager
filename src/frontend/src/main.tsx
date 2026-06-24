@@ -16,7 +16,6 @@ if (storedVersion !== BUILD_VERSION) {
   // Clear stale app state — but PRESERVE critical permanent markers:
   //   usm-reg-*          : registration markers (one per principal, NEVER clear)
   //   usm-admin-*        : legacy admin markers (keep for safety)
-  //   usm-super-admin-v1 : super admin localStorage flag (NEVER clear on deploy)
   //   usm-store          : Zustand persisted shop config / setup state
   //   usm-setup-done     : CRITICAL setup-done flag
   // Clearing these forces users through setup wizard or breaks admin detection.
@@ -34,8 +33,7 @@ if (storedVersion !== BUILD_VERSION) {
       !key.startsWith("usm-reg-") && // CRITICAL: registration markers
       !key.startsWith("usm-admin-") && // legacy admin markers
       !key.startsWith("usm-store") && // Zustand shop config / setup state
-      key !== "usm-setup-done" && // CRITICAL: setup-done flag
-      key !== "usm-super-admin-v1" // CRITICAL: super-admin flag
+      key !== "usm-setup-done" // CRITICAL: setup-done flag
     ) {
       keysToRemove.push(key);
     }

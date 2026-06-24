@@ -1,26 +1,19 @@
 {
-  "overview": "A globally scalable POS and inventory management system supporting all shop types, countries, currencies, and languages with maximum automation.",
+  "overview": "Universal Shop System is a multi-shop retail management web app with billing, inventory, supplier/staff management, and analytics.",
   "features": [
-    "Multi-shop management with strict data isolation",
-    "16+ shop types with smart fields and auto-naming",
-    "Billing with retail, wholesale, and custom pricing",
-    "Live gold and silver rates for jewelry shops",
-    "Barcode scanning and supplier management",
-    "Smart alerts for expiry, low stock, and dead stock",
-    "Return and refund system with store credit",
-    "Super Admin panel with full shop and user control",
-    "Bulk entry and bulk selling spreadsheet forms",
-    "Multi-currency and multi-language support including RTL"
+    "Multi-shop retail management",
+    "Billing and inventory",
+    "Staff invite link system",
+    "Supplier management",
+    "Dashboard analytics"
   ],
-  "category": "pos-inventory",
+  "category": "productivity",
   "tags": [
-    "shop",
-    "pos",
-    "inventory",
+    "retail",
+    "shop-management",
     "billing",
-    "multi-currency",
-    "global",
-    "automation"
+    "inventory",
+    "staff-management"
   ],
-  "last_updated": "2026-05-28T06:37:47.527Z"
+  "last_updated": "2026-06-19T06:57:23.534Z"
 }

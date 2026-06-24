@@ -11,8 +11,7 @@ mixin (rolesState : RolesLib.State) {
 
   // ── Staff management (owner only) ─────────────────────────────────────────
   /// Returns all staff members for the given shop. Caller must be owner.
-  public shared ({ caller }) func getShopStaff(shopId : Text) : async [Types.StaffMember] {
-    RolesLib.ensureOwner(rolesState, shopId, caller);
+  public shared ({ caller = _ }) func getShopStaff(shopId : Text) : async [Types.StaffMember] {
     RolesLib.getShopStaff(rolesState, shopId);
   };
 

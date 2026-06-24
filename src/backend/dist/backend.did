@@ -9,17 +9,6 @@ type http_header =
    name: text;
    value: text;
  };
-type UserView = 
- record {
-   firstSeen: int;
-   isActive: bool;
-   isBlocked: bool;
-   lastSeen: int;
-   loginCount: nat;
-   "principal": text;
-   shopName: text;
-   shopType: text;
- };
 type UpdateProductInput = 
  record {
    barcode: opt text;
@@ -128,6 +117,15 @@ type StaffMember =
    "principal": principal;
    role: ShopRole;
  };
+type StaffInviteView = 
+ record {
+   createdAt: int;
+   expiresAt: int;
+   shopId: text;
+   token: text;
+   used: bool;
+   usedBy: opt principal;
+ };
 type SmartDefaultCharges = 
  record {
    defaultLabourCharge: opt text;
@@ -186,16 +184,6 @@ type ShopConfig =
    taxRate: float64;
    taxSystem: TaxSystem;
    vatNumber: opt text;
- };
-type ShopAdminView = 
- record {
-   currency: text;
-   isDisabled: bool;
-   language: text;
-   "principal": text;
-   shopName: text;
-   shopType: text;
-   taxSystem: text;
  };
 type SalonFields = 
  record {
@@ -679,40 +667,13 @@ type AgroProductsFields =
    weight: float64;
    weightUnit: text;
  };
-type AdminNoteView = 
- record {
-   content: text;
-   createdAt: int;
-   isDeleted: bool;
-   noteId: nat;
-   targetPrincipal: text;
-   updatedAt: opt int;
- };
 service : {
-  addAdminNote: (targetPrincipal: text, content: text) ->
-   (variant {
-      err: text;
-      ok: nat;
-    });
+  acceptStaffInvite: (token: text) -> (Result);
   addStaff: (shopId: text, staffPrincipal: principal) -> (Result);
-  adminBlockUser: (userPrincipal: text, blocked: bool) ->
-   (variant {
-      err: text;
-      ok;
-    });
-  adminDeleteShop: (shopId: text) -> (variant {
-                                        err: text;
-                                        ok;
-                                      });
-  adminDeleteUser: (userPrincipal: text) -> (variant {
-                                               err: text;
-                                               ok;
-                                             });
   applyStoreCredit: (shopId: text, input: ApplyStoreCreditInput) ->
    (CustomerCredit);
   approveReturn: (shopId: text, returnBillId: ReturnBillId) -> (ReturnBill);
   cancelBill: (id: BillId) -> (bool);
-  checkIfBlocked: () -> (bool) query;
   createBill: (shopId: text, input: CreateBillInput) -> (Bill);
   createOrUpdateCustomer: (shopId: text, name: text, phone: text) ->
    (CustomerId);
@@ -724,26 +685,10 @@ service : {
   createSupplierPurchase: (shopId: text, supplierId: SupplierId, productId:
    nat, quantity: float64, purchasePrice: text, transportCharge: text, notes:
    opt text) -> (SupplierPurchase);
-  deleteAdminNote: (noteId: nat) -> (variant {
-                                       err: text;
-                                       ok;
-                                     });
   deleteProduct: (id: ProductId) -> (bool);
   deleteSupplier: (supplierId: SupplierId) -> (bool);
   generateBillShareToken: (billId: BillId) -> (opt text);
-  getAdminNotes: (targetPrincipal: text) ->
-   (variant {
-      err: text;
-      ok: vec AdminNoteView;
-    });
-  getAllShops: () -> (variant {
-                        err: text;
-                        ok: vec ShopAdminView;
-                      });
-  getAllUsers: () -> (variant {
-                        err: text;
-                        ok: vec UserView;
-                      });
+  generateStaffInvite: (shopId: text) -> (StaffInviteView);
   getBill: (id: BillId) -> (opt Bill) query;
   getCustomerBills: (shopId: text, customerId: CustomerId) ->
    (vec Bill) query;
@@ -772,16 +717,11 @@ service : {
   getShopCustomers: (shopId: text) -> (vec CustomerView) query;
   getShopStaff: (shopId: text) -> (vec StaffMember);
   getSlowMovingProducts: (shopId: text, limit: nat) -> (vec TopProduct);
+  getStaffInvites: (shopId: text) -> (vec StaffInviteView);
   getStockValue: (shopId: text) -> (float64);
-  getSupplier: (supplierId: SupplierId) -> (opt Supplier) query;
+  getSupplier: (shopId: text, supplierId: SupplierId) -> (opt Supplier) query;
   getTopProducts: (shopId: text, period: AnalyticsPeriod, limit: nat) ->
    (vec TopProduct);
-  getUserDetails: ("principal": text) -> (variant {
-                                            err: text;
-                                            ok: UserView;
-                                          });
-  initAdmin: () -> (bool);
-  isAdminCaller: () -> (bool) query;
   isSetupComplete: () -> (bool) query;
   listBills: (shopId: text, filter: BillFilter) -> (vec Bill);
   listProducts: (filter: ProductFilter) -> (vec ProductView) query;
@@ -791,17 +731,13 @@ service : {
    (vec SupplierPurchase) query;
   listReturns: (shopId: text, filter: ReturnFilter) -> (vec ReturnBill);
   listSuppliersByShop: (shopId: text) -> (vec Supplier) query;
-  loginCheck: () -> (variant {
-                       blocked;
-                       ok;
-                     });
   recordPayment: (shopId: text, billId: BillId, additionalAmount: float64) ->
    (Bill);
   recordReminderSent: (shopId: text, billId: BillId) -> ();
-  recordUserLogin: (shopName: text, shopType: text) -> ();
   refreshMetalRates: () -> ();
   rejectReturn: (shopId: text, input: RejectReturnInput) -> (ReturnBill);
   removeStaff: (shopId: text, staffPrincipal: principal) -> (Result);
+  revokeStaffInvite: (token: text) -> (Result);
   saveShopConfig: (config: ShopConfig) -> (ShopConfig);
   searchCustomers: (shopId: text, searchQuery: text) ->
    (vec CustomerView) query;
@@ -809,16 +745,11 @@ service : {
   setDefaultCharges: (charges: SmartDefaultCharges) -> (opt ShopConfig);
   setMetalRatesManual: (gold24kPerGram: float64, silverPerGram: float64) ->
    ();
-  setShopDisabled: ("principal": text, disabled: bool) ->
-   (variant {
-      err: text;
-      ok;
-    });
   transformRatesResponse: (input: TransformationInput) ->
    (TransformationOutput) query;
   updateProduct: (input: UpdateProductInput) -> (opt ProductView);
   updateShopConfig: (config: ShopConfig) -> (opt ShopConfig);
-  updateSupplier: (supplierId: SupplierId, name: text, businessType: 
-   text, phone: text, email: opt text, address: opt text, city: opt text,
-   defaultTransportCharge: opt text) -> (opt Supplier);
+  updateSupplier: (shopId: text, supplierId: SupplierId, name: text,
+   businessType: text, phone: text, email: opt text, address: opt text, city:
+   opt text, defaultTransportCharge: opt text) -> (opt Supplier);
 }

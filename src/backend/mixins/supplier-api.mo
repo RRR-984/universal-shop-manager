@@ -2,9 +2,8 @@ import SupplierLib  "../lib/supplier";
 import SupplierTypes "../types/supplier";
 import Text "mo:core/Text";
 import Runtime "mo:core/Runtime";
-import AdminLib "../lib/admin";
 
-mixin (state : SupplierLib.State, adminState : AdminLib.State) {
+mixin (state : SupplierLib.State) {
   // ── Supplier CRUD ─────────────────────────────────────────────────────────
 
   public shared ({ caller }) func createSupplier(
@@ -17,13 +16,19 @@ mixin (state : SupplierLib.State, adminState : AdminLib.State) {
     city                   : ?Text,
     defaultTransportCharge : ?Text,
   ) : async SupplierTypes.Supplier {
-    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     if (shopId.size() == 0) Runtime.trap("shopId must not be empty");
     SupplierLib.createSupplier(state, shopId, name, businessType, phone, email, address, city, defaultTransportCharge);
   };
 
-  public query func getSupplier(supplierId : SupplierTypes.SupplierId) : async ?SupplierTypes.Supplier {
-    SupplierLib.getSupplier(state, supplierId);
+  // shopId is used for ownership verification — returns null if supplier doesn't belong to shopId
+  public query func getSupplier(shopId : Text, supplierId : SupplierTypes.SupplierId) : async ?SupplierTypes.Supplier {
+    if (shopId.size() == 0) return null;
+    switch (SupplierLib.getSupplier(state, supplierId)) {
+      case null null;
+      case (?s) {
+        if (s.shopId != shopId) null else ?s;
+      };
+    };
   };
 
   public query func listSuppliersByShop(shopId : Text) : async [SupplierTypes.Supplier] {
@@ -32,6 +37,7 @@ mixin (state : SupplierLib.State, adminState : AdminLib.State) {
   };
 
   public shared ({ caller }) func updateSupplier(
+    shopId                 : Text,
     supplierId             : SupplierTypes.SupplierId,
     name                   : Text,
     businessType           : Text,
@@ -41,12 +47,18 @@ mixin (state : SupplierLib.State, adminState : AdminLib.State) {
     city                   : ?Text,
     defaultTransportCharge : ?Text,
   ) : async ?SupplierTypes.Supplier {
-    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
+    if (shopId.size() == 0) Runtime.trap("shopId must not be empty");
+    // Ownership check: supplier must belong to this shop
+    switch (SupplierLib.getSupplier(state, supplierId)) {
+      case null { return null };
+      case (?s) {
+        if (s.shopId != shopId) Runtime.trap("Supplier does not belong to this shop");
+      };
+    };
     SupplierLib.updateSupplier(state, supplierId, name, businessType, phone, email, address, city, defaultTransportCharge);
   };
 
   public shared ({ caller }) func deleteSupplier(supplierId : SupplierTypes.SupplierId) : async Bool {
-    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     SupplierLib.deleteSupplier(state, supplierId);
   };
 
@@ -61,7 +73,6 @@ mixin (state : SupplierLib.State, adminState : AdminLib.State) {
     transportCharge : Text,
     notes           : ?Text,
   ) : async SupplierTypes.SupplierPurchase {
-    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     SupplierLib.createSupplierPurchase(state, shopId, supplierId, productId, quantity, purchasePrice, transportCharge, notes);
   };
 

@@ -2,9 +2,7 @@ import { useActor } from "@caffeineai/core-infrastructure";
 import type { Principal } from "@icp-sdk/core/principal";
 import { useCallback, useMemo } from "react";
 import { createActor } from "../backend";
-import type { SupplierPurchase, SupplierPurchaseWithName } from "../backend.d";
 import type {
-  AdminNoteView,
   ApplyStoreCreditInput,
   CustomerCredit,
   CustomerView,
@@ -14,11 +12,12 @@ import type {
   ReturnBill,
   ReturnBillId,
   ReturnFilter,
-  ShopAdminView,
   SmartDefaultCharges,
+  StaffInviteView,
   StaffMember,
   Supplier,
-  UserView,
+  SupplierPurchase,
+  SupplierPurchaseWithName,
   backendInterface,
 } from "../backend.d";
 import { AnalyticsPeriod } from "../types";
@@ -288,145 +287,11 @@ export function useApi() {
     return actor.refreshMetalRates();
   }, [actor]);
 
-  // Admin
-
-  const recordUserLogin = useCallback(
-    async (shopName: string, shopType: string): Promise<void> => {
-      if (!actor) return;
-      return actor.recordUserLogin(shopName, shopType);
-    },
-    [actor],
-  );
-
-  const checkIfBlocked = useCallback(async (): Promise<boolean> => {
-    if (!actor) return false;
-    try {
-      const a = actor as any;
-      if (typeof a.checkIfBlocked === "function") {
-        const result = await a.checkIfBlocked();
-        return !!result;
-      }
-    } catch {
-      // ignore errors, fail open
-    }
-    return false;
-  }, [actor]);
-
-  const initAdmin = useCallback(async (): Promise<boolean> => {
-    if (!actor) return false;
-    return actor.initAdmin();
-  }, [actor]);
-
-  const isAdminCaller = useCallback(async (): Promise<boolean> => {
-    if (!actor) return false;
-    return actor.isAdminCaller();
-  }, [actor]);
-
-  const getAllUsers = useCallback(async (): Promise<UserView[]> => {
-    if (!actor) return [];
-    const res = await actor.getAllUsers();
-    return res.__kind__ === "ok" ? res.ok : [];
-  }, [actor]);
-
-  const getAllShops = useCallback(async (): Promise<ShopAdminView[]> => {
-    if (!actor) return [];
-    const res = await actor.getAllShops();
-    return res.__kind__ === "ok" ? res.ok : [];
-  }, [actor]);
-
-  const getAdminNotes = useCallback(
-    async (targetPrincipal: string): Promise<AdminNoteView[]> => {
-      if (!actor) return [];
-      const res = await actor.getAdminNotes(targetPrincipal);
-      return res.__kind__ === "ok" ? res.ok.filter((n) => !n.isDeleted) : [];
-    },
-    [actor],
-  );
-
-  const addAdminNote = useCallback(
-    async (targetPrincipal: string, content: string): Promise<boolean> => {
-      if (!actor) return false;
-      const res = await actor.addAdminNote(targetPrincipal, content);
-      return res.__kind__ === "ok";
-    },
-    [actor],
-  );
-
-  const deleteAdminNote = useCallback(
-    async (noteId: bigint): Promise<boolean> => {
-      if (!actor) return false;
-      const res = await actor.deleteAdminNote(noteId);
-      return res.__kind__ === "ok";
-    },
-    [actor],
-  );
-
-  const setShopDisabled = useCallback(
-    async (principal: string, disabled: boolean): Promise<boolean> => {
-      if (!actor) return false;
-      const res = await actor.setShopDisabled(principal, disabled);
-      return res.__kind__ === "ok";
-    },
-    [actor],
-  );
-
-  const adminDeleteShop = useCallback(
-    async (shopId: string): Promise<{ ok: null } | { err: string }> => {
-      if (!actor) return { err: "Actor not ready" };
-      const a = actor as typeof actor & {
-        adminDeleteShop?: (
-          id: string,
-        ) => Promise<{ __kind__: "ok" } | { __kind__: "err"; err: string }>;
-      };
-      if (typeof a.adminDeleteShop !== "function")
-        return { err: "Not implemented" };
-      const res = await a.adminDeleteShop(shopId);
-      return res.__kind__ === "ok" ? { ok: null } : { err: res.err };
-    },
-    [actor],
-  );
-
-  const adminDeleteUser = useCallback(
-    async (userPrincipal: string): Promise<{ ok: null } | { err: string }> => {
-      if (!actor) return { err: "Actor not ready" };
-      const a = actor as typeof actor & {
-        adminDeleteUser?: (
-          p: string,
-        ) => Promise<{ __kind__: "ok" } | { __kind__: "err"; err: string }>;
-      };
-      if (typeof a.adminDeleteUser !== "function")
-        return { err: "Not implemented" };
-      const res = await a.adminDeleteUser(userPrincipal);
-      return res.__kind__ === "ok" ? { ok: null } : { err: res.err };
-    },
-    [actor],
-  );
-
-  const adminBlockUser = useCallback(
-    async (
-      userPrincipal: string,
-      blocked: boolean,
-    ): Promise<{ ok: null } | { err: string }> => {
-      if (!actor) return { err: "Actor not ready" };
-      const a = actor as typeof actor & {
-        adminBlockUser?: (
-          p: string,
-          b: boolean,
-        ) => Promise<{ __kind__: "ok" } | { __kind__: "err"; err: string }>;
-      };
-      if (typeof a.adminBlockUser !== "function")
-        return { err: "Not implemented" };
-      const res = await a.adminBlockUser(userPrincipal, blocked);
-      return res.__kind__ === "ok" ? { ok: null } : { err: res.err };
-    },
-    [actor],
-  );
-
   // Staff Management
 
   const getShopStaff = useCallback(
     async (shopId: string): Promise<StaffMember[]> => {
-      if (!actor) return [];
+      if (!actor) throw new Error("Actor not ready");
       return actor.getShopStaff(shopId);
     },
     [actor],
@@ -444,6 +309,38 @@ export function useApi() {
     async (shopId: string, staffPrincipal: Principal): Promise<Result> => {
       if (!actor) return { __kind__: "err", err: "Actor not ready" };
       return actor.removeStaff(shopId, staffPrincipal);
+    },
+    [actor],
+  );
+
+  const revokeStaffInvite = useCallback(
+    async (token: string): Promise<Result> => {
+      if (!actor) return { __kind__: "err", err: "Actor not ready" };
+      return actor.revokeStaffInvite(token);
+    },
+    [actor],
+  );
+
+  const generateStaffInvite = useCallback(
+    async (shopId: string): Promise<StaffInviteView> => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.generateStaffInvite(shopId);
+    },
+    [actor],
+  );
+
+  const acceptStaffInvite = useCallback(
+    async (token: string): Promise<Result> => {
+      if (!actor) return { __kind__: "err", err: "Actor not ready" };
+      return actor.acceptStaffInvite(token);
+    },
+    [actor],
+  );
+
+  const getStaffInvites = useCallback(
+    async (shopId: string): Promise<StaffInviteView[]> => {
+      if (!actor) return [];
+      return actor.getStaffInvites(shopId);
     },
     [actor],
   );
@@ -542,7 +439,7 @@ export function useApi() {
       city: string | null,
       defaultTransportCharge: string | null,
     ): Promise<Supplier | null> => {
-      if (!actor) return null;
+      if (!actor) throw new Error("Actor not ready");
       return actor.createSupplier(
         shopId,
         name,
@@ -559,6 +456,7 @@ export function useApi() {
 
   const updateSupplier = useCallback(
     async (
+      shopId: string,
       supplierId: string,
       name: string,
       businessType: string,
@@ -568,8 +466,9 @@ export function useApi() {
       city: string | null,
       defaultTransportCharge: string | null,
     ): Promise<Supplier | null> => {
-      if (!actor) return null;
+      if (!actor) throw new Error("Actor not ready");
       return actor.updateSupplier(
+        shopId,
         supplierId,
         name,
         businessType,
@@ -784,21 +683,13 @@ export function useApi() {
       isSetupComplete,
       getMetalRates,
       refreshMetalRates,
-      recordUserLogin,
-      initAdmin,
-      isAdminCaller,
-      getAllUsers,
-      getAllShops,
-      getAdminNotes,
-      addAdminNote,
-      deleteAdminNote,
-      setShopDisabled,
-      adminDeleteShop,
-      adminDeleteUser,
-      adminBlockUser,
       getShopStaff,
       addStaff,
       removeStaff,
+      generateStaffInvite,
+      acceptStaffInvite,
+      getStaffInvites,
+      revokeStaffInvite,
       createOrUpdateCustomer,
       getShopCustomers,
       getCustomerBills,
@@ -818,7 +709,6 @@ export function useApi() {
       createSupplierPurchase,
       listPurchasesByProduct,
       getLastNPurchasesForProduct,
-      checkIfBlocked,
     }),
     [
       ready,
@@ -856,21 +746,13 @@ export function useApi() {
       isSetupComplete,
       getMetalRates,
       refreshMetalRates,
-      recordUserLogin,
-      initAdmin,
-      isAdminCaller,
-      getAllUsers,
-      getAllShops,
-      getAdminNotes,
-      addAdminNote,
-      deleteAdminNote,
-      setShopDisabled,
-      adminDeleteShop,
-      adminDeleteUser,
-      adminBlockUser,
       getShopStaff,
       addStaff,
       removeStaff,
+      generateStaffInvite,
+      acceptStaffInvite,
+      getStaffInvites,
+      revokeStaffInvite,
       createOrUpdateCustomer,
       getShopCustomers,
       getCustomerBills,
@@ -890,7 +772,6 @@ export function useApi() {
       createSupplierPurchase,
       listPurchasesByProduct,
       getLastNPurchasesForProduct,
-      checkIfBlocked,
     ],
   );
 }

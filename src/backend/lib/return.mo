@@ -260,7 +260,7 @@ module {
       if (rb.shopId == shopId) { toDelete.add(id) };
     };
     for (id in toDelete.values()) {
-      ignore self.returns.remove(id);
+      self.returns.remove(id);
     };
     // Remove store credits for this shop
     let creditKeysToDelete = List.empty<Text>();
@@ -268,7 +268,7 @@ module {
       if (credit.shopId == shopId) { creditKeysToDelete.add(key) };
     };
     for (key in creditKeysToDelete.values()) {
-      ignore self.credits.remove(key);
+      self.credits.remove(key);
     };
   };
 

@@ -683,7 +683,8 @@ function extractFormFromProduct(
   const base: Partial<ProductFormState> = {
     name: product.name,
     barcode: (product as ProductView & { barcode?: string }).barcode ?? "",
-    supplierId: "",
+    supplierId:
+      (product as ProductView & { supplierId?: string }).supplierId ?? "",
     category: product.category,
     unit: product.unit,
     retailPrice: String(product.retailPrice),
@@ -6509,10 +6510,11 @@ export function ProductsPage() {
     const timeout = setTimeout(() => {
       if (!cancelled) setLoading(false);
     }, 5000);
+    const unifiedShopId = activeShopId ?? shopConfig?.shopName ?? "";
     try {
       const [data, supplierList] = await Promise.all([
         api.listProducts({ isActive: true }),
-        api.listSuppliersByShop(activeShopId ?? shopConfig?.shopName ?? ""),
+        api.listSuppliersByShop(unifiedShopId),
       ]);
       if (!cancelled) {
         setProducts(data);
@@ -6525,7 +6527,7 @@ export function ProductsPage() {
     return () => {
       cancelled = true;
     };
-  }, [api, activeShopId, shopConfig?.shopName]);
+  }, [api, activeShopId, shopConfig]);
 
   useEffect(() => {
     void loadProducts();
@@ -7251,13 +7253,13 @@ export function ProductsPage() {
       )}
 
       {/* Add/Edit Modal */}
-      {showModal && activeShopId && (
+      {showModal && (
         <ProductModal
           shopType={shopType}
           editProduct={editProduct}
           currency={currency}
           metalRates={metalRates}
-          shopId={activeShopId}
+          shopId={activeShopId ?? shopConfig?.shopName ?? ""}
           suppliers={suppliers}
           products={products}
           onClose={() => {

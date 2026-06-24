@@ -9,7 +9,6 @@ import {
   ReturnStatus,
   ShopType,
   TaxSystem,
-  Variant_ok_blocked,
  } from "../backend";
 import type { backendInterface } from "../backend";
 
@@ -311,22 +310,7 @@ export const mockBackend: backendInterface = {
     headers: input.response.headers,
   }),
 
-  // Admin methods
-  initAdmin: async () => true,
-  isAdminCaller: async () => false,
-  recordUserLogin: async () => undefined,
-  getAllUsers: async () => ({ __kind__: "ok" as const, ok: [] }),
-  getUserDetails: async (_principal) => ({ __kind__: "ok" as const, ok: { principal: _principal, shopName: "Test Shop", shopType: "Mobile", firstSeen: BigInt(0), lastSeen: BigInt(0), loginCount: BigInt(1), isActive: true, isBlocked: false } }),
-  addAdminNote: async () => ({ __kind__: "ok" as const, ok: BigInt(1) }),
-  getAdminNotes: async () => ({ __kind__: "ok" as const, ok: [] }),
-  deleteAdminNote: async () => ({ __kind__: "ok" as const, ok: null }),
-  getAllShops: async () => ({ __kind__: "ok" as const, ok: [] }),
-  setShopDisabled: async () => ({ __kind__: "ok" as const, ok: null }),
-  adminDeleteShop: async () => ({ __kind__: "ok" as const, ok: null }),
-  adminDeleteUser: async () => ({ __kind__: "ok" as const, ok: null }),
-  adminBlockUser: async () => ({ __kind__: "ok" as const, ok: null }),
-  checkIfBlocked: async () => false,
-  loginCheck: async () => Variant_ok_blocked.ok,
+
 
   // Staff methods
   addStaff: async (_shopId, _staffPrincipal) => ({ __kind__: "ok" as const, ok: null }),
@@ -373,12 +357,16 @@ export const mockBackend: backendInterface = {
 
   // Supplier methods
   listSuppliersByShop: async (_shopId) => [],
-  createSupplier: async (_shopId, name, businessType, phone) => ({
+  createSupplier: async (_shopId, name, businessType, phone, email, address, city, defaultTransportCharge) => ({
     id: `sup_${Date.now()}`,
     shopId: _shopId,
     name,
     businessType,
     phone,
+    email: email || undefined,
+    address: address || undefined,
+    city: city || undefined,
+    defaultTransportCharge: defaultTransportCharge || undefined,
   }),
   createSupplierPurchase: async (_shopId, supplierId, productId, quantity, purchasePrice, transportCharge) => ({
     id: `sp_${Date.now()}`,
@@ -390,17 +378,21 @@ export const mockBackend: backendInterface = {
     transportCharge,
     purchaseDate: BigInt(Date.now() * 1000000),
   }),
-  updateSupplier: async (_supplierId, name, businessType, phone) => ({
+  updateSupplier: async (_shopId, _supplierId, name, businessType, phone, email, address, city, defaultTransportCharge) => ({
     id: _supplierId,
-    shopId: "",
+    shopId: _shopId,
     name,
     businessType,
     phone,
+    email: email || undefined,
+    address: address || undefined,
+    city: city || undefined,
+    defaultTransportCharge: defaultTransportCharge || undefined,
   }),
   deleteSupplier: async (_supplierId) => true,
   getDefaultCharges: async () => null,
   setDefaultCharges: async (_charges) => null,
-  getSupplier: async (_supplierId) => null,
+  getSupplier: async (_shopId, _supplierId) => null,
   listPurchasesByProduct: async (_shopId, _productId) => [],
   listPurchasesBySupplier: async (_shopId, _supplierId) => [],
   getLastNPurchasesForProduct: async (_shopId, _productId, _n) => [],
@@ -454,4 +446,15 @@ export const mockBackend: backendInterface = {
     customerId: "",
     transactions: [],
   }),
+  generateStaffInvite: async (_shopId) => ({
+    token: "mock-invite-token-123",
+    shopId: _shopId,
+    createdAt: BigInt(Date.now() * 1000000),
+    expiresAt: BigInt((Date.now() + 7 * 24 * 60 * 60 * 1000) * 1000000),
+    used: false,
+    role: { __kind__: "staff" },
+  }),
+  acceptStaffInvite: async (_token) => ({ __kind__: "ok", ok: null }),
+  getStaffInvites: async (_shopId) => [],
+  revokeStaffInvite: async (_token) => ({ __kind__: "ok", ok: null }),
 };

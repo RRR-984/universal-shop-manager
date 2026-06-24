@@ -259,7 +259,8 @@ function CustomerDetailModal({
 }) {
   const api = useApi();
   const shopConfig = useStore((s) => s.shopConfig);
-  const shopId = shopConfig?.shopName ?? "";
+  const activeShopId = useStore((s) => s.activeShopId);
+  const shopId = activeShopId ?? shopConfig?.shopName ?? "";
   const [credit, setCredit] = useState<CustomerCredit | null>(null);
   const [returns, setReturns] = useState<ReturnBill[]>([]);
   const [activeTab, setActiveTab] = useState<"history" | "returns">("history");
@@ -654,10 +655,11 @@ function CustomerCard({
 export function CustomersPage() {
   const { actor } = useActor(createActor);
   const shopConfig = useStore((s) => s.shopConfig);
+  const activeShopId = useStore((s) => s.activeShopId);
 
   const currency = shopConfig?.currency ?? "USD";
   const dateFormat = shopConfig?.dateFormat ?? DateFormat.DDMMYYYY;
-  const shopId = shopConfig?.shopName ?? "";
+  const shopId = activeShopId ?? shopConfig?.shopName ?? "";
 
   // Role: owner = first user. Staff role only bills access — no profit shown here regardless.
   // This page is safe for staff (no profit data shown).

@@ -39,9 +39,11 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ShopRole } from "../backend";
 import type { SmartDefaultCharges, Supplier } from "../backend.d";
+import StaffInviteManager from "../components/StaffInviteManager";
 import { useApi } from "../lib/api";
 import { getAllCurrencies } from "../lib/currency";
 import { applyRTL, isRTL, setLanguage } from "../lib/i18n";
+import { settingsGuard } from "../lib/settingsGuard";
 import { useStore } from "../lib/store";
 import {
   BUILDING_MATERIAL_SHOP_TYPE,
@@ -469,16 +471,31 @@ function StaffManagementSection({
   const [addError, setAddError] = useState<string | null>(null);
 
   const loadStaff = useCallback(async () => {
-    if (!shopId) return;
-    setLoadingStaff(true);
-    try {
-      const members = await getShopStaff(shopId);
-      setStaff(members as unknown as StaffMember[]);
-    } catch {
-      // silently handle
-    } finally {
+    if (!shopId) {
       setLoadingStaff(false);
+      return;
     }
+    setLoadingStaff(true);
+    let retries = 0;
+    while (retries < 3) {
+      try {
+        const members = await getShopStaff(shopId);
+        setStaff(members as unknown as StaffMember[]);
+        setLoadingStaff(false);
+        return;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes("Actor not ready") && retries < 2) {
+          retries++;
+          await new Promise((res) => setTimeout(res, 1000));
+        } else {
+          toast.error("Failed to load staff. Please try again.");
+          setLoadingStaff(false);
+          return;
+        }
+      }
+    }
+    setLoadingStaff(false);
   }, [shopId, getShopStaff]);
 
   useEffect(() => {
@@ -566,6 +583,9 @@ function StaffManagementSection({
           Owner
         </Badge>
       </div>
+
+      {/* Invite Staff via Link */}
+      <StaffInviteManager shopId={shopId} />
 
       {/* Add Staff Form */}
       <div className="space-y-2">
@@ -846,49 +866,75 @@ function SuppliersSection({
   const handleSave = async () => {
     if (!validate()) return;
     setSaving(true);
-    try {
-      if (editingSupplier) {
-        const updated = await updateSupplier(
-          editingSupplier.id,
-          form.name.trim(),
-          form.businessType,
-          form.phone.trim(),
-          form.email.trim() || null,
-          form.address.trim() || null,
-          form.city.trim() || null,
-          form.defaultTransportCharge.trim() || null,
-        );
-        if (updated) {
-          toast.success("Supplier updated");
-          setDialogOpen(false);
-          await loadSuppliers();
+    let retries = 0;
+    while (retries < 3) {
+      try {
+        if (editingSupplier) {
+          const updated = await updateSupplier(
+            shopId,
+            editingSupplier.id,
+            form.name.trim(),
+            form.businessType,
+            form.phone.trim(),
+            form.email.trim() || null,
+            form.address.trim() || null,
+            form.city.trim() || null,
+            form.defaultTransportCharge.trim() || null,
+          );
+          if (updated?.id) {
+            toast.success("Supplier updated");
+            setDialogOpen(false);
+            await loadSuppliers();
+          } else {
+            toast.error("Failed to update supplier. Please try again.");
+          }
         } else {
-          toast.error("Failed to update supplier");
+          const created = await createSupplier(
+            shopId,
+            form.name.trim(),
+            form.businessType,
+            form.phone.trim(),
+            form.email.trim() || null,
+            form.address.trim() || null,
+            form.city.trim() || null,
+            form.defaultTransportCharge.trim() || null,
+          );
+          if (created?.id) {
+            toast.success("Supplier added");
+            setDialogOpen(false);
+            await loadSuppliers();
+          } else {
+            toast.error("Failed to add supplier. Please try again.");
+          }
         }
-      } else {
-        const created = await createSupplier(
-          shopId,
-          form.name.trim(),
-          form.businessType,
-          form.phone.trim(),
-          form.email.trim() || null,
-          form.address.trim() || null,
-          form.city.trim() || null,
-          form.defaultTransportCharge.trim() || null,
-        );
-        if (created !== null && created !== undefined) {
-          toast.success("Supplier added");
-          setDialogOpen(false);
-          await loadSuppliers();
+        setSaving(false);
+        return;
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes("Actor not ready") && retries < 2) {
+          retries++;
+          await new Promise((res) => setTimeout(res, 1000));
+        } else if (msg.includes("trap") || msg.includes("assertion failed")) {
+          toast.error(
+            `Backend error: ${msg}. Please check your input and try again.`,
+          );
+          setSaving(false);
+          return;
+        } else if (msg.includes("validation") || msg.includes("required")) {
+          toast.error(`Validation error: ${msg}`);
+          setSaving(false);
+          return;
         } else {
-          toast.error("Failed to add supplier");
+          toast.error("Something went wrong. Please try again.");
+          setSaving(false);
+          return;
         }
       }
-    } catch {
-      toast.error("Something went wrong. Please try again.");
-    } finally {
-      setSaving(false);
     }
+    setSaving(false);
+    toast.error(
+      "Connection timed out. Please check your network and try again.",
+    );
   };
 
   const handleDelete = async () => {
@@ -1444,10 +1490,11 @@ function DefaultChargesSection({ currency }: { currency: string }) {
 // ─── Main Page ───────────────────────────────────────────────────────────────
 export function SettingsPage() {
   const { getShopConfig, updateShopConfig, ready } = useApi();
-  const { shopConfig, setShopConfig } = useStore();
+  const { shopConfig, setShopConfig, activeShopId } = useStore();
   const navigate = useNavigate();
   const { clear: logout, identity } = useInternetIdentity();
   const ownerPrincipal = identity?.getPrincipal().toText() ?? "";
+  const unifiedShopId = activeShopId ?? shopConfig?.shopName ?? "";
 
   const { reset } = useStore();
 
@@ -1524,13 +1571,53 @@ export function SettingsPage() {
       toast.error("Shop name is required");
       return;
     }
+
+    // ── STEP 1: Write all setup-complete markers SYNCHRONOUSLY before anything
+    // else. This ensures the route guard in App.tsx always sees
+    // setupAlreadyDone=true even if a re-render is triggered mid-save.
+    const setupKeys = [
+      "usm-setup-done",
+      "usm-setup-complete",
+      "usm-setup-complete-v2",
+      "usm-registered",
+      "usm-setup-complete-nav",
+    ];
+    for (const k of setupKeys) {
+      try {
+        localStorage.setItem(k, "true");
+      } catch {
+        /* ignore */
+      }
+      try {
+        sessionStorage.setItem(k, "true");
+      } catch {
+        /* ignore */
+      }
+    }
+    // Also write the principal-scoped key if present
+    try {
+      const principalKey = Object.keys(localStorage).find((k) =>
+        k.startsWith("usm-reg-"),
+      );
+      if (principalKey) {
+        localStorage.setItem(principalKey, "true");
+        sessionStorage.setItem(principalKey, "true");
+      }
+    } catch {
+      /* ignore */
+    }
+
+    // ── STEP 2: Set the guard flag so App.tsx route guard skips redirects
+    settingsGuard.isSavingSettings = true;
     setSaving(true);
+
     try {
       const updated = await updateShopConfig({
         ...form,
         language: selectedLanguage,
         isSetupComplete: true,
       });
+      // ── STEP 3: Only call setShopConfig AFTER the API succeeds
       if (updated) {
         setShopConfig(updated);
         setLanguage(updated.language);
@@ -1541,6 +1628,11 @@ export function SettingsPage() {
       toast.error("Failed to save settings. Please try again.");
     } finally {
       setSaving(false);
+      // ── STEP 4: Clear the guard flag. Use a short delay so any in-flight
+      // re-renders triggered by setShopConfig() above complete first.
+      setTimeout(() => {
+        settingsGuard.isSavingSettings = false;
+      }, 500);
     }
   };
 
@@ -2366,7 +2458,7 @@ export function SettingsPage() {
           <TabsContent value="staff" className="space-y-0">
             <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
               <StaffManagementSection
-                shopId={ownerPrincipal}
+                shopId={unifiedShopId}
                 ownerPrincipal={ownerPrincipal}
               />
             </div>
@@ -2376,7 +2468,7 @@ export function SettingsPage() {
           <TabsContent value="suppliers" className="space-y-0">
             <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
               <SuppliersSection
-                shopId={ownerPrincipal}
+                shopId={unifiedShopId}
                 currency={form.currency}
               />
             </div>

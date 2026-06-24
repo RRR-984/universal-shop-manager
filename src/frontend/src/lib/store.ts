@@ -10,6 +10,7 @@ import {
 import type { Bill, ProductView, ShopConfig, UserRole } from "../types";
 import type { ShopWithId } from "../types";
 import { setLanguage } from "./i18n";
+import { settingsGuard } from "./settingsGuard";
 
 // Generate a simple unique id
 function generateId(): string {
@@ -88,6 +89,51 @@ export const useStore = create<StoreState & StoreActions>()(
       ...initialState,
 
       setShopConfig: (config) => {
+        // ── STEP 1: Write ALL localStorage/sessionStorage markers SYNCHRONOUSLY ──
+        // This MUST happen before any Zustand state update so that if App.tsx's
+        // route guard re-evaluates mid-render (triggered by the Zustand update
+        // below), it always sees setupAlreadyDone=true.
+        if (config.isSetupComplete) {
+          const keys = [
+            "usm-setup-done",
+            "usm-setup-complete",
+            "usm-setup-complete-v2",
+            "usm-registered",
+            "usm-setup-complete-nav",
+          ];
+          for (const k of keys) {
+            try {
+              localStorage.setItem(k, "true");
+            } catch {
+              /* ignore */
+            }
+            try {
+              sessionStorage.setItem(k, "true");
+            } catch {
+              /* ignore */
+            }
+          }
+          // Also write the principal-scoped key if present
+          try {
+            const principalKey = Object.keys(localStorage).find((k) =>
+              k.startsWith("usm-reg-"),
+            );
+            if (principalKey) {
+              localStorage.setItem(principalKey, "true");
+              sessionStorage.setItem(principalKey, "true");
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+
+        // ── STEP 2: Raise the guard flag if a settings save is in progress ─────
+        // settingsGuard.isSavingSettings is set by SettingsPage before calling
+        // setShopConfig. This keeps App.tsx route guard from redirecting during
+        // the re-render caused by the Zustand state update below.
+        // (Flag is cleared by SettingsPage's finally block.)
+
+        // ── STEP 3: Zustand state update ─────────────────────────────────────
         setLanguage(config.language);
         set((state) => {
           // Auto-migrate: if shops array is empty but config exists, add it

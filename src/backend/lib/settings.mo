@@ -1,13 +1,15 @@
 import Types "../types/common";
+import Map "mo:core/Map";
 
 module {
   // ── State ─────────────────────────────────────────────────────────────────────
   public type State = {
     var config : ?Types.ShopConfig;
+    shopsByPrincipal : Map.Map<Text, Nat>;
   };
 
   public func newState() : State {
-    { var config = null };
+    { var config = null; shopsByPrincipal = Map.empty<Text, Nat>() };
   };
 
   // ── CRUD ──────────────────────────────────────────────────────────────────────
@@ -15,16 +17,18 @@ module {
     state.config;
   };
 
-  public func saveConfig(state : State, config : Types.ShopConfig) : Types.ShopConfig {
+  public func saveConfig(state : State, config : Types.ShopConfig, principal : Text) : Types.ShopConfig {
     state.config := ?config;
+    incrementShopCount(state, principal);
     config;
   };
 
-  public func updateConfig(state : State, config : Types.ShopConfig) : ?Types.ShopConfig {
+  public func updateConfig(state : State, config : Types.ShopConfig, principal : Text) : ?Types.ShopConfig {
     switch (state.config) {
       case null null;
       case (?_) {
         state.config := ?config;
+        incrementShopCount(state, principal);
         ?config;
       };
     };
@@ -53,6 +57,20 @@ module {
       case null 180;
       case (?cfg) cfg.deadStockAlertDays;
     };
+  };
+
+  // Returns how many shops the given principal has saved.
+  public func countShopsForPrincipal(state : State, principal : Text) : Nat {
+    switch (state.shopsByPrincipal.get(principal)) {
+      case null 0;
+      case (?c) c;
+    };
+  };
+
+  // Increment shop count for a principal (called when a new shop is saved).
+  func incrementShopCount(state : State, principal : Text) {
+    let current = countShopsForPrincipal(state, principal);
+    state.shopsByPrincipal.add(principal, current + 1);
   };
 
   // Returns whether min-stock (low stock) alerts are enabled.

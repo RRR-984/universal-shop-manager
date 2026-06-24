@@ -17,16 +17,6 @@ export interface TransformationOutput {
     body: Uint8Array;
     headers: Array<http_header>;
 }
-export interface UserView {
-    firstSeen: bigint;
-    principal: string;
-    isBlocked: boolean;
-    isActive: boolean;
-    loginCount: bigint;
-    shopName: string;
-    shopType: string;
-    lastSeen: bigint;
-}
 export interface SalesSummary {
     totalProfit: number;
     totalSales: number;
@@ -176,6 +166,14 @@ export interface RejectReturnInput {
     reason: string;
 }
 export type CustomerId = bigint;
+export interface StaffInviteView {
+    token: string;
+    expiresAt: bigint;
+    shopId: string;
+    usedBy?: Principal;
+    createdAt: bigint;
+    used: boolean;
+}
 export interface Bill {
     id: BillId;
     customerName: string;
@@ -370,14 +368,6 @@ export interface SupplierPurchase {
     quantity: number;
     supplierId: SupplierId;
 }
-export interface AdminNoteView {
-    isDeleted: boolean;
-    content: string;
-    noteId: bigint;
-    createdAt: bigint;
-    targetPrincipal: string;
-    updatedAt?: bigint;
-}
 export interface NearExpiryProduct {
     expiryDate: string;
     name: string;
@@ -409,43 +399,9 @@ export interface LowStockProduct {
     minStock: number;
     stock: number;
 }
-export interface ShopAdminView {
-    principal: string;
-    language: string;
-    currency: string;
-    shopName: string;
-    shopType: string;
-    taxSystem: string;
-    isDisabled: boolean;
-}
 export interface RestaurantFields {
     expiryDate?: string;
     category: RestaurantCategory;
-}
-export interface ProductView {
-    id: ProductId;
-    retailPrice: number;
-    shopId: string;
-    name: string;
-    wholesalePrice: number;
-    createdAt: Timestamp;
-    unit: string;
-    lastSaleTime?: Timestamp;
-    isActive: boolean;
-    minStock: number;
-    updatedAt: Timestamp;
-    stock: number;
-    labourCost?: number;
-    barcode?: string;
-    shopType: ShopType;
-    category: string;
-    transportCost?: number;
-    costPrice: number;
-    engineFields: EngineFields;
-}
-export interface SupplierPurchaseWithName {
-    supplierName: string;
-    purchase: SupplierPurchase;
 }
 export type EngineFields = {
     __kind__: "Salon";
@@ -499,6 +455,31 @@ export type EngineFields = {
     __kind__: "Clothing";
     Clothing: ClothingFields;
 };
+export interface ProductView {
+    id: ProductId;
+    retailPrice: number;
+    shopId: string;
+    name: string;
+    wholesalePrice: number;
+    createdAt: Timestamp;
+    unit: string;
+    lastSaleTime?: Timestamp;
+    isActive: boolean;
+    minStock: number;
+    updatedAt: Timestamp;
+    stock: number;
+    labourCost?: number;
+    barcode?: string;
+    shopType: ShopType;
+    category: string;
+    transportCost?: number;
+    costPrice: number;
+    engineFields: EngineFields;
+}
+export interface SupplierPurchaseWithName {
+    supplierName: string;
+    purchase: SupplierPurchase;
+}
 export interface BuildingMaterialFields {
     weight: string;
     material_type: string;
@@ -661,81 +642,22 @@ export enum TaxSystem {
     Generic = "Generic",
     SalesTax = "SalesTax"
 }
-export enum Variant_ok_blocked {
-    ok = "ok",
-    blocked = "blocked"
-}
 export interface backendInterface {
-    addAdminNote(targetPrincipal: string, content: string): Promise<{
-        __kind__: "ok";
-        ok: bigint;
-    } | {
-        __kind__: "err";
-        err: string;
-    }>;
+    acceptStaffInvite(token: string): Promise<Result>;
     addStaff(shopId: string, staffPrincipal: Principal): Promise<Result>;
-    adminBlockUser(userPrincipal: string, blocked: boolean): Promise<{
-        __kind__: "ok";
-        ok: null;
-    } | {
-        __kind__: "err";
-        err: string;
-    }>;
-    adminDeleteShop(shopId: string): Promise<{
-        __kind__: "ok";
-        ok: null;
-    } | {
-        __kind__: "err";
-        err: string;
-    }>;
-    adminDeleteUser(userPrincipal: string): Promise<{
-        __kind__: "ok";
-        ok: null;
-    } | {
-        __kind__: "err";
-        err: string;
-    }>;
     applyStoreCredit(shopId: string, input: ApplyStoreCreditInput): Promise<CustomerCredit>;
     approveReturn(shopId: string, returnBillId: ReturnBillId): Promise<ReturnBill>;
     cancelBill(id: BillId): Promise<boolean>;
-    checkIfBlocked(): Promise<boolean>;
     createBill(shopId: string, input: CreateBillInput): Promise<Bill>;
     createOrUpdateCustomer(shopId: string, name: string, phone: string): Promise<CustomerId>;
     createProduct(input: CreateProductInput): Promise<ProductView>;
     createReturn(shopId: string, input: CreateReturnInput): Promise<ReturnBill>;
     createSupplier(shopId: string, name: string, businessType: string, phone: string, email: string | null, address: string | null, city: string | null, defaultTransportCharge: string | null): Promise<Supplier>;
     createSupplierPurchase(shopId: string, supplierId: SupplierId, productId: bigint, quantity: number, purchasePrice: string, transportCharge: string, notes: string | null): Promise<SupplierPurchase>;
-    deleteAdminNote(noteId: bigint): Promise<{
-        __kind__: "ok";
-        ok: null;
-    } | {
-        __kind__: "err";
-        err: string;
-    }>;
     deleteProduct(id: ProductId): Promise<boolean>;
     deleteSupplier(supplierId: SupplierId): Promise<boolean>;
     generateBillShareToken(billId: BillId): Promise<string | null>;
-    getAdminNotes(targetPrincipal: string): Promise<{
-        __kind__: "ok";
-        ok: Array<AdminNoteView>;
-    } | {
-        __kind__: "err";
-        err: string;
-    }>;
-    getAllShops(): Promise<{
-        __kind__: "ok";
-        ok: Array<ShopAdminView>;
-    } | {
-        __kind__: "err";
-        err: string;
-    }>;
-    getAllUsers(): Promise<{
-        __kind__: "ok";
-        ok: Array<UserView>;
-    } | {
-        __kind__: "err";
-        err: string;
-    }>;
+    generateStaffInvite(shopId: string): Promise<StaffInviteView>;
     getBill(id: BillId): Promise<Bill | null>;
     getCustomerBills(shopId: string, customerId: CustomerId): Promise<Array<Bill>>;
     getCustomerCredit(shopId: string, customerPhone: string): Promise<CustomerCredit>;
@@ -758,18 +680,10 @@ export interface backendInterface {
     getShopCustomers(shopId: string): Promise<Array<CustomerView>>;
     getShopStaff(shopId: string): Promise<Array<StaffMember>>;
     getSlowMovingProducts(shopId: string, limit: bigint): Promise<Array<TopProduct>>;
+    getStaffInvites(shopId: string): Promise<Array<StaffInviteView>>;
     getStockValue(shopId: string): Promise<number>;
-    getSupplier(supplierId: SupplierId): Promise<Supplier | null>;
+    getSupplier(shopId: string, supplierId: SupplierId): Promise<Supplier | null>;
     getTopProducts(shopId: string, period: AnalyticsPeriod, limit: bigint): Promise<Array<TopProduct>>;
-    getUserDetails(principal: string): Promise<{
-        __kind__: "ok";
-        ok: UserView;
-    } | {
-        __kind__: "err";
-        err: string;
-    }>;
-    initAdmin(): Promise<boolean>;
-    isAdminCaller(): Promise<boolean>;
     isSetupComplete(): Promise<boolean>;
     listBills(shopId: string, filter: BillFilter): Promise<Array<Bill>>;
     listProducts(filter: ProductFilter): Promise<Array<ProductView>>;
@@ -777,27 +691,19 @@ export interface backendInterface {
     listPurchasesBySupplier(shopId: string, supplierId: SupplierId): Promise<Array<SupplierPurchase>>;
     listReturns(shopId: string, filter: ReturnFilter): Promise<Array<ReturnBill>>;
     listSuppliersByShop(shopId: string): Promise<Array<Supplier>>;
-    loginCheck(): Promise<Variant_ok_blocked>;
     recordPayment(shopId: string, billId: BillId, additionalAmount: number): Promise<Bill>;
     recordReminderSent(shopId: string, billId: BillId): Promise<void>;
-    recordUserLogin(shopName: string, shopType: string): Promise<void>;
     refreshMetalRates(): Promise<void>;
     rejectReturn(shopId: string, input: RejectReturnInput): Promise<ReturnBill>;
     removeStaff(shopId: string, staffPrincipal: Principal): Promise<Result>;
+    revokeStaffInvite(token: string): Promise<Result>;
     saveShopConfig(config: ShopConfig): Promise<ShopConfig>;
     searchCustomers(shopId: string, searchQuery: string): Promise<Array<CustomerView>>;
     searchProducts(shopId: string, searchTerm: string): Promise<Array<ProductView>>;
     setDefaultCharges(charges: SmartDefaultCharges): Promise<ShopConfig | null>;
     setMetalRatesManual(gold24kPerGram: number, silverPerGram: number): Promise<void>;
-    setShopDisabled(principal: string, disabled: boolean): Promise<{
-        __kind__: "ok";
-        ok: null;
-    } | {
-        __kind__: "err";
-        err: string;
-    }>;
     transformRatesResponse(input: TransformationInput): Promise<TransformationOutput>;
     updateProduct(input: UpdateProductInput): Promise<ProductView | null>;
     updateShopConfig(config: ShopConfig): Promise<ShopConfig | null>;
-    updateSupplier(supplierId: SupplierId, name: string, businessType: string, phone: string, email: string | null, address: string | null, city: string | null, defaultTransportCharge: string | null): Promise<Supplier | null>;
+    updateSupplier(shopId: string, supplierId: SupplierId, name: string, businessType: string, phone: string, email: string | null, address: string | null, city: string | null, defaultTransportCharge: string | null): Promise<Supplier | null>;
 }

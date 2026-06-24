@@ -407,32 +407,13 @@ export const SupplierPurchase = IDL.Record({
   'quantity' : IDL.Float64,
   'supplierId' : SupplierId,
 });
-export const AdminNoteView = IDL.Record({
-  'isDeleted' : IDL.Bool,
-  'content' : IDL.Text,
-  'noteId' : IDL.Nat,
+export const StaffInviteView = IDL.Record({
+  'token' : IDL.Text,
+  'expiresAt' : IDL.Int,
+  'shopId' : IDL.Text,
+  'usedBy' : IDL.Opt(IDL.Principal),
   'createdAt' : IDL.Int,
-  'targetPrincipal' : IDL.Text,
-  'updatedAt' : IDL.Opt(IDL.Int),
-});
-export const ShopAdminView = IDL.Record({
-  'principal' : IDL.Text,
-  'language' : IDL.Text,
-  'currency' : IDL.Text,
-  'shopName' : IDL.Text,
-  'shopType' : IDL.Text,
-  'taxSystem' : IDL.Text,
-  'isDisabled' : IDL.Bool,
-});
-export const UserView = IDL.Record({
-  'firstSeen' : IDL.Int,
-  'principal' : IDL.Text,
-  'isBlocked' : IDL.Bool,
-  'isActive' : IDL.Bool,
-  'loginCount' : IDL.Nat,
-  'shopName' : IDL.Text,
-  'shopType' : IDL.Text,
-  'lastSeen' : IDL.Int,
+  'used' : IDL.Bool,
 });
 export const DeadStockProduct = IDL.Record({
   'name' : IDL.Text,
@@ -620,27 +601,8 @@ export const UpdateProductInput = IDL.Record({
 });
 
 export const idlService = IDL.Service({
-  'addAdminNote' : IDL.Func(
-      [IDL.Text, IDL.Text],
-      [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
-      [],
-    ),
+  'acceptStaffInvite' : IDL.Func([IDL.Text], [Result], []),
   'addStaff' : IDL.Func([IDL.Text, IDL.Principal], [Result], []),
-  'adminBlockUser' : IDL.Func(
-      [IDL.Text, IDL.Bool],
-      [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
-      [],
-    ),
-  'adminDeleteShop' : IDL.Func(
-      [IDL.Text],
-      [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
-      [],
-    ),
-  'adminDeleteUser' : IDL.Func(
-      [IDL.Text],
-      [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
-      [],
-    ),
   'applyStoreCredit' : IDL.Func(
       [IDL.Text, ApplyStoreCreditInput],
       [CustomerCredit],
@@ -648,7 +610,6 @@ export const idlService = IDL.Service({
     ),
   'approveReturn' : IDL.Func([IDL.Text, ReturnBillId], [ReturnBill], []),
   'cancelBill' : IDL.Func([BillId], [IDL.Bool], []),
-  'checkIfBlocked' : IDL.Func([], [IDL.Bool], ['query']),
   'createBill' : IDL.Func([IDL.Text, CreateBillInput], [Bill], []),
   'createOrUpdateCustomer' : IDL.Func(
       [IDL.Text, IDL.Text, IDL.Text],
@@ -684,29 +645,10 @@ export const idlService = IDL.Service({
       [SupplierPurchase],
       [],
     ),
-  'deleteAdminNote' : IDL.Func(
-      [IDL.Nat],
-      [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
-      [],
-    ),
   'deleteProduct' : IDL.Func([ProductId], [IDL.Bool], []),
   'deleteSupplier' : IDL.Func([SupplierId], [IDL.Bool], []),
   'generateBillShareToken' : IDL.Func([BillId], [IDL.Opt(IDL.Text)], []),
-  'getAdminNotes' : IDL.Func(
-      [IDL.Text],
-      [IDL.Variant({ 'ok' : IDL.Vec(AdminNoteView), 'err' : IDL.Text })],
-      [],
-    ),
-  'getAllShops' : IDL.Func(
-      [],
-      [IDL.Variant({ 'ok' : IDL.Vec(ShopAdminView), 'err' : IDL.Text })],
-      [],
-    ),
-  'getAllUsers' : IDL.Func(
-      [],
-      [IDL.Variant({ 'ok' : IDL.Vec(UserView), 'err' : IDL.Text })],
-      [],
-    ),
+  'generateStaffInvite' : IDL.Func([IDL.Text], [StaffInviteView], []),
   'getBill' : IDL.Func([BillId], [IDL.Opt(Bill)], ['query']),
   'getCustomerBills' : IDL.Func(
       [IDL.Text, CustomerId],
@@ -769,20 +711,18 @@ export const idlService = IDL.Service({
       [IDL.Vec(TopProduct)],
       [],
     ),
+  'getStaffInvites' : IDL.Func([IDL.Text], [IDL.Vec(StaffInviteView)], []),
   'getStockValue' : IDL.Func([IDL.Text], [IDL.Float64], []),
-  'getSupplier' : IDL.Func([SupplierId], [IDL.Opt(Supplier)], ['query']),
+  'getSupplier' : IDL.Func(
+      [IDL.Text, SupplierId],
+      [IDL.Opt(Supplier)],
+      ['query'],
+    ),
   'getTopProducts' : IDL.Func(
       [IDL.Text, AnalyticsPeriod, IDL.Nat],
       [IDL.Vec(TopProduct)],
       [],
     ),
-  'getUserDetails' : IDL.Func(
-      [IDL.Text],
-      [IDL.Variant({ 'ok' : UserView, 'err' : IDL.Text })],
-      [],
-    ),
-  'initAdmin' : IDL.Func([], [IDL.Bool], []),
-  'isAdminCaller' : IDL.Func([], [IDL.Bool], ['query']),
   'isSetupComplete' : IDL.Func([], [IDL.Bool], ['query']),
   'listBills' : IDL.Func([IDL.Text, BillFilter], [IDL.Vec(Bill)], []),
   'listProducts' : IDL.Func([ProductFilter], [IDL.Vec(ProductView)], ['query']),
@@ -798,17 +738,12 @@ export const idlService = IDL.Service({
     ),
   'listReturns' : IDL.Func([IDL.Text, ReturnFilter], [IDL.Vec(ReturnBill)], []),
   'listSuppliersByShop' : IDL.Func([IDL.Text], [IDL.Vec(Supplier)], ['query']),
-  'loginCheck' : IDL.Func(
-      [],
-      [IDL.Variant({ 'ok' : IDL.Null, 'blocked' : IDL.Null })],
-      [],
-    ),
   'recordPayment' : IDL.Func([IDL.Text, BillId, IDL.Float64], [Bill], []),
   'recordReminderSent' : IDL.Func([IDL.Text, BillId], [], []),
-  'recordUserLogin' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'refreshMetalRates' : IDL.Func([], [], []),
   'rejectReturn' : IDL.Func([IDL.Text, RejectReturnInput], [ReturnBill], []),
   'removeStaff' : IDL.Func([IDL.Text, IDL.Principal], [Result], []),
+  'revokeStaffInvite' : IDL.Func([IDL.Text], [Result], []),
   'saveShopConfig' : IDL.Func([ShopConfig], [ShopConfig], []),
   'searchCustomers' : IDL.Func(
       [IDL.Text, IDL.Text],
@@ -826,11 +761,6 @@ export const idlService = IDL.Service({
       [],
     ),
   'setMetalRatesManual' : IDL.Func([IDL.Float64, IDL.Float64], [], []),
-  'setShopDisabled' : IDL.Func(
-      [IDL.Text, IDL.Bool],
-      [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
-      [],
-    ),
   'transformRatesResponse' : IDL.Func(
       [TransformationInput],
       [TransformationOutput],
@@ -840,6 +770,7 @@ export const idlService = IDL.Service({
   'updateShopConfig' : IDL.Func([ShopConfig], [IDL.Opt(ShopConfig)], []),
   'updateSupplier' : IDL.Func(
       [
+        IDL.Text,
         SupplierId,
         IDL.Text,
         IDL.Text,
@@ -1253,32 +1184,13 @@ export const idlFactory = ({ IDL }) => {
     'quantity' : IDL.Float64,
     'supplierId' : SupplierId,
   });
-  const AdminNoteView = IDL.Record({
-    'isDeleted' : IDL.Bool,
-    'content' : IDL.Text,
-    'noteId' : IDL.Nat,
+  const StaffInviteView = IDL.Record({
+    'token' : IDL.Text,
+    'expiresAt' : IDL.Int,
+    'shopId' : IDL.Text,
+    'usedBy' : IDL.Opt(IDL.Principal),
     'createdAt' : IDL.Int,
-    'targetPrincipal' : IDL.Text,
-    'updatedAt' : IDL.Opt(IDL.Int),
-  });
-  const ShopAdminView = IDL.Record({
-    'principal' : IDL.Text,
-    'language' : IDL.Text,
-    'currency' : IDL.Text,
-    'shopName' : IDL.Text,
-    'shopType' : IDL.Text,
-    'taxSystem' : IDL.Text,
-    'isDisabled' : IDL.Bool,
-  });
-  const UserView = IDL.Record({
-    'firstSeen' : IDL.Int,
-    'principal' : IDL.Text,
-    'isBlocked' : IDL.Bool,
-    'isActive' : IDL.Bool,
-    'loginCount' : IDL.Nat,
-    'shopName' : IDL.Text,
-    'shopType' : IDL.Text,
-    'lastSeen' : IDL.Int,
+    'used' : IDL.Bool,
   });
   const DeadStockProduct = IDL.Record({
     'name' : IDL.Text,
@@ -1463,27 +1375,8 @@ export const idlFactory = ({ IDL }) => {
   });
   
   return IDL.Service({
-    'addAdminNote' : IDL.Func(
-        [IDL.Text, IDL.Text],
-        [IDL.Variant({ 'ok' : IDL.Nat, 'err' : IDL.Text })],
-        [],
-      ),
+    'acceptStaffInvite' : IDL.Func([IDL.Text], [Result], []),
     'addStaff' : IDL.Func([IDL.Text, IDL.Principal], [Result], []),
-    'adminBlockUser' : IDL.Func(
-        [IDL.Text, IDL.Bool],
-        [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
-        [],
-      ),
-    'adminDeleteShop' : IDL.Func(
-        [IDL.Text],
-        [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
-        [],
-      ),
-    'adminDeleteUser' : IDL.Func(
-        [IDL.Text],
-        [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
-        [],
-      ),
     'applyStoreCredit' : IDL.Func(
         [IDL.Text, ApplyStoreCreditInput],
         [CustomerCredit],
@@ -1491,7 +1384,6 @@ export const idlFactory = ({ IDL }) => {
       ),
     'approveReturn' : IDL.Func([IDL.Text, ReturnBillId], [ReturnBill], []),
     'cancelBill' : IDL.Func([BillId], [IDL.Bool], []),
-    'checkIfBlocked' : IDL.Func([], [IDL.Bool], ['query']),
     'createBill' : IDL.Func([IDL.Text, CreateBillInput], [Bill], []),
     'createOrUpdateCustomer' : IDL.Func(
         [IDL.Text, IDL.Text, IDL.Text],
@@ -1527,29 +1419,10 @@ export const idlFactory = ({ IDL }) => {
         [SupplierPurchase],
         [],
       ),
-    'deleteAdminNote' : IDL.Func(
-        [IDL.Nat],
-        [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
-        [],
-      ),
     'deleteProduct' : IDL.Func([ProductId], [IDL.Bool], []),
     'deleteSupplier' : IDL.Func([SupplierId], [IDL.Bool], []),
     'generateBillShareToken' : IDL.Func([BillId], [IDL.Opt(IDL.Text)], []),
-    'getAdminNotes' : IDL.Func(
-        [IDL.Text],
-        [IDL.Variant({ 'ok' : IDL.Vec(AdminNoteView), 'err' : IDL.Text })],
-        [],
-      ),
-    'getAllShops' : IDL.Func(
-        [],
-        [IDL.Variant({ 'ok' : IDL.Vec(ShopAdminView), 'err' : IDL.Text })],
-        [],
-      ),
-    'getAllUsers' : IDL.Func(
-        [],
-        [IDL.Variant({ 'ok' : IDL.Vec(UserView), 'err' : IDL.Text })],
-        [],
-      ),
+    'generateStaffInvite' : IDL.Func([IDL.Text], [StaffInviteView], []),
     'getBill' : IDL.Func([BillId], [IDL.Opt(Bill)], ['query']),
     'getCustomerBills' : IDL.Func(
         [IDL.Text, CustomerId],
@@ -1628,20 +1501,18 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(TopProduct)],
         [],
       ),
+    'getStaffInvites' : IDL.Func([IDL.Text], [IDL.Vec(StaffInviteView)], []),
     'getStockValue' : IDL.Func([IDL.Text], [IDL.Float64], []),
-    'getSupplier' : IDL.Func([SupplierId], [IDL.Opt(Supplier)], ['query']),
+    'getSupplier' : IDL.Func(
+        [IDL.Text, SupplierId],
+        [IDL.Opt(Supplier)],
+        ['query'],
+      ),
     'getTopProducts' : IDL.Func(
         [IDL.Text, AnalyticsPeriod, IDL.Nat],
         [IDL.Vec(TopProduct)],
         [],
       ),
-    'getUserDetails' : IDL.Func(
-        [IDL.Text],
-        [IDL.Variant({ 'ok' : UserView, 'err' : IDL.Text })],
-        [],
-      ),
-    'initAdmin' : IDL.Func([], [IDL.Bool], []),
-    'isAdminCaller' : IDL.Func([], [IDL.Bool], ['query']),
     'isSetupComplete' : IDL.Func([], [IDL.Bool], ['query']),
     'listBills' : IDL.Func([IDL.Text, BillFilter], [IDL.Vec(Bill)], []),
     'listProducts' : IDL.Func(
@@ -1669,17 +1540,12 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(Supplier)],
         ['query'],
       ),
-    'loginCheck' : IDL.Func(
-        [],
-        [IDL.Variant({ 'ok' : IDL.Null, 'blocked' : IDL.Null })],
-        [],
-      ),
     'recordPayment' : IDL.Func([IDL.Text, BillId, IDL.Float64], [Bill], []),
     'recordReminderSent' : IDL.Func([IDL.Text, BillId], [], []),
-    'recordUserLogin' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'refreshMetalRates' : IDL.Func([], [], []),
     'rejectReturn' : IDL.Func([IDL.Text, RejectReturnInput], [ReturnBill], []),
     'removeStaff' : IDL.Func([IDL.Text, IDL.Principal], [Result], []),
+    'revokeStaffInvite' : IDL.Func([IDL.Text], [Result], []),
     'saveShopConfig' : IDL.Func([ShopConfig], [ShopConfig], []),
     'searchCustomers' : IDL.Func(
         [IDL.Text, IDL.Text],
@@ -1697,11 +1563,6 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'setMetalRatesManual' : IDL.Func([IDL.Float64, IDL.Float64], [], []),
-    'setShopDisabled' : IDL.Func(
-        [IDL.Text, IDL.Bool],
-        [IDL.Variant({ 'ok' : IDL.Null, 'err' : IDL.Text })],
-        [],
-      ),
     'transformRatesResponse' : IDL.Func(
         [TransformationInput],
         [TransformationOutput],
@@ -1715,6 +1576,7 @@ export const idlFactory = ({ IDL }) => {
     'updateShopConfig' : IDL.Func([ShopConfig], [IDL.Opt(ShopConfig)], []),
     'updateSupplier' : IDL.Func(
         [
+          IDL.Text,
           SupplierId,
           IDL.Text,
           IDL.Text,

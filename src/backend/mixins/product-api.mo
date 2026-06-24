@@ -4,12 +4,10 @@ import SettingsLib "../lib/settings";
 import RolesLib   "../lib/roles";
 import Text "mo:core/Text";
 import Runtime "mo:core/Runtime";
-import AdminLib "../lib/admin";
 
-mixin (state : ProdLib.State, settingsState : SettingsLib.State, rolesState : RolesLib.State, adminState : AdminLib.State) {
+mixin (state : ProdLib.State, settingsState : SettingsLib.State, rolesState : RolesLib.State) {
   // ── Product CRUD ──────────────────────────────────────────────────────────
   public shared ({ caller }) func createProduct(input : Types.CreateProductInput) : async Types.ProductView {
-    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     if (input.shopId.size() == 0) Runtime.trap("shopId must not be empty");
     ProdLib.createProduct(state, input);
   };
@@ -28,14 +26,12 @@ mixin (state : ProdLib.State, settingsState : SettingsLib.State, rolesState : Ro
   };
 
   public shared ({ caller }) func updateProduct(input : Types.UpdateProductInput) : async ?Types.ProductView {
-    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     if (input.shopId.size() == 0) Runtime.trap("shopId must not be empty");
     RolesLib.ensureOwner(rolesState, input.shopId, caller);
     ProdLib.updateProduct(state, input.shopId, input);
   };
 
   public shared ({ caller }) func deleteProduct(id : Types.ProductId) : async Bool {
-    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     ProdLib.deleteProduct(state, id);
   };
 

@@ -10,14 +10,6 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface AdminNoteView {
-  'isDeleted' : boolean,
-  'content' : string,
-  'noteId' : bigint,
-  'createdAt' : bigint,
-  'targetPrincipal' : string,
-  'updatedAt' : [] | [bigint],
-}
 export interface AgroProductsFields {
   'weight' : number,
   'expiryDate' : [] | [string],
@@ -414,15 +406,6 @@ export interface SalonFields {
   'staffName' : string,
   'expiryDate' : [] | [string],
 }
-export interface ShopAdminView {
-  'principal' : string,
-  'language' : string,
-  'currency' : string,
-  'shopName' : string,
-  'shopType' : string,
-  'taxSystem' : string,
-  'isDisabled' : boolean,
-}
 export interface ShopConfig {
   'isSetupComplete' : boolean,
   'numberFormat' : NumberFormat,
@@ -470,6 +453,14 @@ export interface SmartDefaultCharges {
   'defaultOtherCharge' : [] | [string],
   'defaultLabourCharge' : [] | [string],
   'defaultTransportCharge' : [] | [string],
+}
+export interface StaffInviteView {
+  'token' : string,
+  'expiresAt' : bigint,
+  'shopId' : string,
+  'usedBy' : [] | [Principal],
+  'createdAt' : bigint,
+  'used' : boolean,
 }
 export interface StaffMember {
   'principal' : Principal,
@@ -563,16 +554,6 @@ export interface UpdateProductInput {
   'costPrice' : number,
   'engineFields' : EngineFields,
 }
-export interface UserView {
-  'firstSeen' : bigint,
-  'principal' : string,
-  'isBlocked' : boolean,
-  'isActive' : boolean,
-  'loginCount' : bigint,
-  'shopName' : string,
-  'shopType' : string,
-  'lastSeen' : bigint,
-}
 export interface http_header { 'value' : string, 'name' : string }
 export interface http_request_result {
   'status' : bigint,
@@ -580,34 +561,14 @@ export interface http_request_result {
   'headers' : Array<http_header>,
 }
 export interface _SERVICE {
-  'addAdminNote' : ActorMethod<
-    [string, string],
-    { 'ok' : bigint } |
-      { 'err' : string }
-  >,
+  'acceptStaffInvite' : ActorMethod<[string], Result>,
   'addStaff' : ActorMethod<[string, Principal], Result>,
-  'adminBlockUser' : ActorMethod<
-    [string, boolean],
-    { 'ok' : null } |
-      { 'err' : string }
-  >,
-  'adminDeleteShop' : ActorMethod<
-    [string],
-    { 'ok' : null } |
-      { 'err' : string }
-  >,
-  'adminDeleteUser' : ActorMethod<
-    [string],
-    { 'ok' : null } |
-      { 'err' : string }
-  >,
   'applyStoreCredit' : ActorMethod<
     [string, ApplyStoreCreditInput],
     CustomerCredit
   >,
   'approveReturn' : ActorMethod<[string, ReturnBillId], ReturnBill>,
   'cancelBill' : ActorMethod<[BillId], boolean>,
-  'checkIfBlocked' : ActorMethod<[], boolean>,
   'createBill' : ActorMethod<[string, CreateBillInput], Bill>,
   'createOrUpdateCustomer' : ActorMethod<[string, string, string], CustomerId>,
   'createProduct' : ActorMethod<[CreateProductInput], ProductView>,
@@ -629,29 +590,10 @@ export interface _SERVICE {
     [string, SupplierId, bigint, number, string, string, [] | [string]],
     SupplierPurchase
   >,
-  'deleteAdminNote' : ActorMethod<
-    [bigint],
-    { 'ok' : null } |
-      { 'err' : string }
-  >,
   'deleteProduct' : ActorMethod<[ProductId], boolean>,
   'deleteSupplier' : ActorMethod<[SupplierId], boolean>,
   'generateBillShareToken' : ActorMethod<[BillId], [] | [string]>,
-  'getAdminNotes' : ActorMethod<
-    [string],
-    { 'ok' : Array<AdminNoteView> } |
-      { 'err' : string }
-  >,
-  'getAllShops' : ActorMethod<
-    [],
-    { 'ok' : Array<ShopAdminView> } |
-      { 'err' : string }
-  >,
-  'getAllUsers' : ActorMethod<
-    [],
-    { 'ok' : Array<UserView> } |
-      { 'err' : string }
-  >,
+  'generateStaffInvite' : ActorMethod<[string], StaffInviteView>,
   'getBill' : ActorMethod<[BillId], [] | [Bill]>,
   'getCustomerBills' : ActorMethod<[string, CustomerId], Array<Bill>>,
   'getCustomerCredit' : ActorMethod<[string, string], CustomerCredit>,
@@ -683,19 +625,13 @@ export interface _SERVICE {
   'getShopCustomers' : ActorMethod<[string], Array<CustomerView>>,
   'getShopStaff' : ActorMethod<[string], Array<StaffMember>>,
   'getSlowMovingProducts' : ActorMethod<[string, bigint], Array<TopProduct>>,
+  'getStaffInvites' : ActorMethod<[string], Array<StaffInviteView>>,
   'getStockValue' : ActorMethod<[string], number>,
-  'getSupplier' : ActorMethod<[SupplierId], [] | [Supplier]>,
+  'getSupplier' : ActorMethod<[string, SupplierId], [] | [Supplier]>,
   'getTopProducts' : ActorMethod<
     [string, AnalyticsPeriod, bigint],
     Array<TopProduct>
   >,
-  'getUserDetails' : ActorMethod<
-    [string],
-    { 'ok' : UserView } |
-      { 'err' : string }
-  >,
-  'initAdmin' : ActorMethod<[], boolean>,
-  'isAdminCaller' : ActorMethod<[], boolean>,
   'isSetupComplete' : ActorMethod<[], boolean>,
   'listBills' : ActorMethod<[string, BillFilter], Array<Bill>>,
   'listProducts' : ActorMethod<[ProductFilter], Array<ProductView>>,
@@ -709,23 +645,17 @@ export interface _SERVICE {
   >,
   'listReturns' : ActorMethod<[string, ReturnFilter], Array<ReturnBill>>,
   'listSuppliersByShop' : ActorMethod<[string], Array<Supplier>>,
-  'loginCheck' : ActorMethod<[], { 'ok' : null } | { 'blocked' : null }>,
   'recordPayment' : ActorMethod<[string, BillId, number], Bill>,
   'recordReminderSent' : ActorMethod<[string, BillId], undefined>,
-  'recordUserLogin' : ActorMethod<[string, string], undefined>,
   'refreshMetalRates' : ActorMethod<[], undefined>,
   'rejectReturn' : ActorMethod<[string, RejectReturnInput], ReturnBill>,
   'removeStaff' : ActorMethod<[string, Principal], Result>,
+  'revokeStaffInvite' : ActorMethod<[string], Result>,
   'saveShopConfig' : ActorMethod<[ShopConfig], ShopConfig>,
   'searchCustomers' : ActorMethod<[string, string], Array<CustomerView>>,
   'searchProducts' : ActorMethod<[string, string], Array<ProductView>>,
   'setDefaultCharges' : ActorMethod<[SmartDefaultCharges], [] | [ShopConfig]>,
   'setMetalRatesManual' : ActorMethod<[number, number], undefined>,
-  'setShopDisabled' : ActorMethod<
-    [string, boolean],
-    { 'ok' : null } |
-      { 'err' : string }
-  >,
   'transformRatesResponse' : ActorMethod<
     [TransformationInput],
     TransformationOutput
@@ -734,6 +664,7 @@ export interface _SERVICE {
   'updateShopConfig' : ActorMethod<[ShopConfig], [] | [ShopConfig]>,
   'updateSupplier' : ActorMethod<
     [
+      string,
       SupplierId,
       string,
       string,

@@ -17,7 +17,7 @@ import { useStore } from "./lib/store";
 // Lazy page imports
 import { Suspense, lazy } from "react";
 import { InstallPromptPopup } from "./components/InstallPromptPopup";
-import { SuperAdminProvider } from "./context/SuperAdminContext";
+import { settingsGuard } from "./lib/settingsGuard";
 
 const SetupPage = lazy(() =>
   import("./pages/SetupPage").then((m) => ({ default: m.SetupPage })),
@@ -43,11 +43,11 @@ const HistoryPage = lazy(() =>
 const SettingsPage = lazy(() =>
   import("./pages/SettingsPage").then((m) => ({ default: m.SettingsPage })),
 );
-const AdminPanelPageLazy = lazy(() =>
-  import("./pages/AdminPanelPage").then((m) => ({ default: m.AdminPanelPage })),
-);
 const PublicBillPage = lazy(() =>
   import("./pages/PublicBillPage").then((m) => ({ default: m.PublicBillPage })),
+);
+const JoinPage = lazy(() =>
+  import("./pages/JoinPage").then((m) => ({ default: m.default })),
 );
 const CustomersPage = lazy(() =>
   import("./pages/CustomersPage").then((m) => ({ default: m.CustomersPage })),
@@ -63,9 +63,6 @@ function RootLayout() {
   const {
     getShopConfig,
     isSetupComplete: checkSetupComplete,
-    recordUserLogin,
-    checkIfBlocked,
-    initAdmin,
     getMyRole,
     ready,
   } = useApi();
@@ -97,7 +94,6 @@ function RootLayout() {
   const [authChecking, setAuthChecking] = useState(
     loginStatus === "initializing",
   );
-  const [isUserBlocked, setIsUserBlocked] = useState(false);
 
   // FIX: Handle the usm-nav-to-dashboard flag set by SetupPage.
   // This flag is written synchronously before navigate, so it's always
@@ -150,14 +146,6 @@ function RootLayout() {
         if (config) {
           syncActiveShopFromBackend(config);
           setLanguage(config.language);
-          void recordUserLogin(config.shopName, config.shopType);
-          // Check if user has been blocked by admin
-          const blocked = await checkIfBlocked();
-          if (blocked) {
-            setIsUserBlocked(true);
-            setIsLoading(false);
-            return;
-          }
           try {
             const role = await getMyRole(config.shopName);
             setUserRole(role);
@@ -168,7 +156,6 @@ function RootLayout() {
             localStorage.setItem(`usm-reg-${principalText}`, "true");
           }
         }
-        void initAdmin();
         if (setupDone || isRegisteredLocally) {
           setIsSetupComplete(true);
         }
@@ -185,70 +172,12 @@ function RootLayout() {
     isRegisteredLocally,
     getShopConfig,
     checkSetupComplete,
-    recordUserLogin,
-    initAdmin,
     getMyRole,
     syncActiveShopFromBackend,
     setIsSetupComplete,
     setIsLoading,
     setUserRole,
-    checkIfBlocked,
   ]);
-
-  // Blocked user screen — shown before any routing
-  if (isUserBlocked) {
-    return (
-      <div
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "#fff",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 9999,
-          padding: "2rem",
-          textAlign: "center",
-        }}
-      >
-        <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>⛔</div>
-        <h2
-          style={{
-            color: "#dc2626",
-            fontWeight: "bold",
-            marginBottom: "0.5rem",
-          }}
-        >
-          Account Blocked
-        </h2>
-        <p style={{ marginBottom: "0.5rem", fontSize: "1.1rem" }}>
-          Aapka account block kar diya gaya hai.
-        </p>
-        <p style={{ color: "#6b7280", marginBottom: "1.5rem" }}>
-          Your account has been blocked. Please contact support.
-        </p>
-        <button
-          type="button"
-          onClick={() => {
-            localStorage.clear();
-            window.location.replace("/");
-          }}
-          style={{
-            background: "#dc2626",
-            color: "white",
-            padding: "0.75rem 1.5rem",
-            borderRadius: "8px",
-            border: "none",
-            cursor: "pointer",
-            fontSize: "1rem",
-          }}
-        >
-          Logout
-        </button>
-      </div>
-    );
-  }
 
   // While II is still initialising, show full-screen loading spinner.
   // NEVER redirect to login or show SetupPage during auth loading.
@@ -267,6 +196,14 @@ function RootLayout() {
 
   // localStorage is synchronous — if the marker is there, the user HAS
   // completed setup. Don't let async identity=null override this fact.
+  // Also: never redirect while a settings save is in progress — the Zustand
+  // update from setShopConfig() triggers a re-render here, but localStorage
+  // markers are always written first (in store.ts), so this check is a safety
+  // belt against any edge-case timing between the write and the re-render.
+  if (settingsGuard.isSavingSettings) {
+    return <Outlet />;
+  }
+
   if (setupAlreadyDone) {
     // Show loading spinner for RETURNING users on cold boot only.
     if (isLoading) {
@@ -286,13 +223,17 @@ function RootLayout() {
   }
 
   // Only redirect to login/setup when ALL conditions are truly met:
-  // authChecking===false, loginStatus has fully resolved, identity===null,
-  // setupAlreadyDone===false.
+  // - authChecking===false (II fully resolved)
+  // - loginStatus has fully resolved
+  // - identity===null (definitively not authenticated)
+  // - setupAlreadyDone===false
+  // - isSavingSettings===false (settings save in progress — NEVER redirect)
   const isLoggedOut =
     !isAuthenticated &&
     !identity &&
     loginStatus !== "initializing" &&
-    authChecking === false;
+    authChecking === false &&
+    !settingsGuard.isSavingSettings;
 
   if (isLoggedOut) {
     return (
@@ -302,8 +243,8 @@ function RootLayout() {
     );
   }
 
-  // Authenticated but setup not done
-  if (!setupAlreadyDone) {
+  // Authenticated but setup not done (also skip if settings save is in progress)
+  if (!setupAlreadyDone && !settingsGuard.isSavingSettings) {
     return (
       <Suspense fallback={<PageSpinner />}>
         <SetupPage />
@@ -436,24 +377,6 @@ const settingsRoute = createRoute({
   ),
 });
 
-const adminRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/admin",
-  beforeLoad: () => {
-    const isAdmin = localStorage.getItem("usm-super-admin-v1") === "1";
-    if (!isAdmin) throw redirect({ to: "/dashboard" });
-    const role = useStore.getState().userRole;
-    if (role === "staff") {
-      throw redirect({ to: "/dashboard" });
-    }
-  },
-  component: () => (
-    <Suspense fallback={<PageSpinner />}>
-      <AdminPanelPageLazy />
-    </Suspense>
-  ),
-});
-
 const customersRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/customers",
@@ -477,6 +400,17 @@ const publicBillRoute = createRoute({
   ),
 });
 
+// Staff invite join route — no auth required (login handled inside page)
+const joinRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/join/$token",
+  component: () => (
+    <Suspense fallback={<PageSpinner />}>
+      <JoinPage />
+    </Suspense>
+  ),
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   setupRoute,
@@ -487,9 +421,9 @@ const routeTree = rootRoute.addChildren([
   billingRoute,
   historyRoute,
   settingsRoute,
-  adminRoute,
   customersRoute,
   publicBillRoute,
+  joinRoute,
 ]);
 
 const router = createRouter({ routeTree });
@@ -521,9 +455,5 @@ function AppWithInstallPrompt() {
 }
 
 export default function App() {
-  return (
-    <SuperAdminProvider>
-      <AppWithInstallPrompt />
-    </SuperAdminProvider>
-  );
+  return <AppWithInstallPrompt />;
 }

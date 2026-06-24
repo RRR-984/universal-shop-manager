@@ -1239,7 +1239,7 @@ export function HistoryPage() {
   const userRole = useStore((s) => s.userRole);
   const currency = shopConfig?.currency ?? "USD";
   const dateFormat = shopConfig?.dateFormat ?? DateFormat.DDMMYYYY;
-  const shopId = activeShopId ?? shopConfig?.shopName ?? "default";
+  const shopId = activeShopId ?? shopConfig?.shopName ?? "";
   const isOwner = userRole !== "staff";
 
   const [bills, setBills] = useState<Bill[]>([]);

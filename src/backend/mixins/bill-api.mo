@@ -6,12 +6,10 @@ import BillSharingTypes "../types/bill-sharing";
 import Time "mo:core/Time";
 import RolesLib "../lib/roles";
 import Text "mo:core/Text";
-import AdminLib "../lib/admin";
 
-mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { var config : ?Types.ShopConfig }, rolesState : RolesLib.State, adminState : AdminLib.State) {
+mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { var config : ?Types.ShopConfig }, rolesState : RolesLib.State) {
   // ── Bill CRUD ─────────────────────────────────────────────────────────────
   public shared ({ caller }) func createBill(shopId : Text, input : Types.CreateBillInput) : async Types.Bill {
-    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     let shopConfig = switch (settingsState.config) {
       case null Runtime.trap("Shop not configured. Please complete setup first.");
       case (?cfg) cfg;
@@ -36,8 +34,8 @@ mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { v
       let itemRevenue = item.rate * item.qty - item.discount;
       let itemCost    = costPrice * item.qty;
       let itemProfit  = itemRevenue - itemCost;
-      // Only add positive profit; negative means cost > sale price (loss item, don't drag profit below 0 cumulatively)
-      if (itemProfit > 0.0) { profit += itemProfit };
+      // Include all profit/loss — loss-making items (itemProfit < 0) must reduce total
+      profit += itemProfit;
     });
 
     // Deduct stock using FEFO for medical items and record sale time
@@ -56,7 +54,6 @@ mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { v
 
   // ── Bill sharing ───────────────────────────────────────────────────────────
   public shared ({ caller }) func generateBillShareToken(billId : Types.BillId) : async ?Text {
-    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     BillLib.generateShareToken(billState, billId);
   };
 
@@ -75,7 +72,6 @@ mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { v
   };
 
   public shared ({ caller }) func cancelBill(id : Types.BillId) : async Bool {
-    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     BillLib.cancelBill(billState, id);
   };
 
@@ -91,7 +87,6 @@ mixin (billState : BillLib.State, prodState : ProdLib.State, settingsState : { v
 
   /// Records an additional payment against a partial bill. Owner-only.
   public shared ({ caller }) func recordPayment(shopId : Text, billId : Types.BillId, additionalAmount : Float) : async Types.Bill {
-    if (AdminLib.isBlocked(adminState, caller.toText())) { Runtime.trap("Account blocked. Contact support.") };
     if (not RolesLib.isShopOwner(rolesState, shopId, caller)) {
       Runtime.trap("Access denied: owner only");
     };
